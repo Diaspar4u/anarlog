@@ -217,9 +217,7 @@ export function NotificationSettingsView() {
 
     const nextIgnoredPlatforms = isCurrentlyIgnored
       ? ignoredPlatforms.filter((appId: string) => appId !== bundleId)
-      : defaultIgnored
-        ? ignoredPlatforms.filter((appId: string) => appId !== bundleId)
-        : [...ignoredPlatforms, bundleId];
+      : [...ignoredPlatforms, bundleId];
     const nextIncludedPlatforms = isCurrentlyIgnored
       ? defaultIgnored && !includedPlatforms.includes(bundleId)
         ? [...includedPlatforms, bundleId]

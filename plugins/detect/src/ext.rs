@@ -32,9 +32,9 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Detect<'a, R, M> {
             .into_iter()
             .collect::<std::collections::HashSet<_>>();
 
-        for id in crate::policy::default_ignored_bundle_ids() {
-            if !next_ids.contains(&id) {
-                state_guard.mic_usage_tracker.cancel_app(&id);
+        for id in &state_guard.policy.user_included_bundle_ids {
+            if !next_ids.contains(id) {
+                state_guard.mic_usage_tracker.cancel_app(id);
             }
         }
 

@@ -389,6 +389,16 @@ mod tests {
     }
 
     #[test]
+    fn test_user_ignored_overrides_user_included() {
+        let policy = MicNotificationPolicy {
+            user_ignored_bundle_ids: HashSet::from(["com.microsoft.VSCode".to_string()]),
+            user_included_bundle_ids: HashSet::from(["com.microsoft.VSCode".to_string()]),
+            ..Default::default()
+        };
+        assert!(!policy.should_track_app("com.microsoft.VSCode"));
+    }
+
+    #[test]
     fn test_evaluate_mixed_apps_keeps_unknown_only() {
         let policy = MicNotificationPolicy::default();
         let apps = vec![
