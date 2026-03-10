@@ -31,26 +31,18 @@ export function getMicDetectionAppOptions({
   inputValue: string;
   defaultIgnoredBundleIds: string[] | undefined;
 }) {
-  return (allInstalledApps ?? [])
-    .filter((app) =>
-      app.name.toLowerCase().includes(inputValue.trim().toLowerCase()),
-    )
-    .map((app) => {
-      const isDefaultIgnored =
-        defaultIgnoredBundleIds?.includes(app.id) ?? false;
-      const isIgnored = isEffectivelyIgnored({
-        bundleId: app.id,
-        ignoredPlatforms,
-        includedPlatforms,
-        defaultIgnoredBundleIds,
-      });
-
-      return {
-        ...app,
-        action: isIgnored ? "include" : "exclude",
-        isDefaultIgnored,
-      };
+  return (allInstalledApps ?? []).filter((app) => {
+    const matchesSearch = app.name
+      .toLowerCase()
+      .includes(inputValue.trim().toLowerCase());
+    const isIgnored = isEffectivelyIgnored({
+      bundleId: app.id,
+      ignoredPlatforms,
+      includedPlatforms,
+      defaultIgnoredBundleIds,
     });
+    return matchesSearch && !isIgnored;
+  });
 }
 
 export function getEffectiveIgnoredPlatformIds({

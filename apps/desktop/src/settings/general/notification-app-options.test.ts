@@ -6,7 +6,7 @@ import {
 } from "./notification-app-options";
 
 describe("getMicDetectionAppOptions", () => {
-  test("shows default ignored apps as includable matches", () => {
+  test("hides default ignored apps from dropdown matches", () => {
     const options = getMicDetectionAppOptions({
       allInstalledApps: [{ id: "com.microsoft.VSCode", name: "VS Code" }],
       ignoredPlatforms: [],
@@ -15,14 +15,7 @@ describe("getMicDetectionAppOptions", () => {
       defaultIgnoredBundleIds: ["com.microsoft.VSCode"],
     });
 
-    expect(options).toEqual([
-      {
-        id: "com.microsoft.VSCode",
-        name: "VS Code",
-        action: "include",
-        isDefaultIgnored: true,
-      },
-    ]);
+    expect(options).toEqual([]);
   });
 
   test("shows explicitly included default apps as excludable again", () => {
@@ -34,14 +27,7 @@ describe("getMicDetectionAppOptions", () => {
       defaultIgnoredBundleIds: ["com.microsoft.VSCode"],
     });
 
-    expect(options).toEqual([
-      {
-        id: "com.microsoft.VSCode",
-        name: "VS Code",
-        action: "exclude",
-        isDefaultIgnored: true,
-      },
-    ]);
+    expect(options).toEqual([{ id: "com.microsoft.VSCode", name: "VS Code" }]);
   });
 });
 

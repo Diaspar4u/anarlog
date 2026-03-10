@@ -323,8 +323,8 @@ export function NotificationSettingsView() {
                     Exclude apps from detection
                   </h4>
                   <p className="text-xs text-neutral-600">
-                    Search installed apps to exclude them, or click an excluded
-                    app to include it again.
+                    Search installed apps to exclude them. Click an excluded app
+                    to include it again.
                   </p>
                 </div>
                 <div className="relative" ref={containerRef}>
@@ -397,11 +397,6 @@ export function NotificationSettingsView() {
                               onMouseEnter={() => setSelectedIndex(index)}
                             >
                               <span>{app.name}</span>
-                              <span className="text-muted-foreground ml-2 text-xs">
-                                {app.action === "include"
-                                  ? "Include"
-                                  : "Exclude"}
-                              </span>
                             </button>
                           );
                         })}
