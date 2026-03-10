@@ -1,7 +1,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   commands as detectCommands,
@@ -11,6 +11,19 @@ import {
 import { commands as notificationCommands } from "@hypr/plugin-notification";
 import { Badge } from "@hypr/ui/components/ui/badge";
 import { Button } from "@hypr/ui/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@hypr/ui/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@hypr/ui/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -30,11 +43,8 @@ import { useConfigValues } from "~/shared/config";
 import * as settings from "~/store/tinybase/store/settings";
 
 export function NotificationSettingsView() {
-  const [inputValue, setInputValue] = useState("");
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const configs = useConfigValues([
     "notification_event",
@@ -157,7 +167,7 @@ export function NotificationSettingsView() {
     allInstalledApps,
     ignoredPlatforms,
     includedPlatforms,
-    inputValue,
+    inputValue: searchQuery,
     defaultIgnoredBundleIds,
   });
   const effectiveIgnoredPlatformIds = getEffectiveIgnoredPlatformIds({
@@ -193,59 +203,9 @@ export function NotificationSettingsView() {
     form.setFieldValue("ignored_platforms", nextIgnoredPlatforms);
     form.setFieldValue("included_platforms", nextIncludedPlatforms);
     void form.handleSubmit();
-    setInputValue("");
-    setShowDropdown(false);
-    setSelectedIndex(0);
+    setSearchOpen(false);
+    setSearchQuery("");
   };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && inputValue.trim()) {
-      e.preventDefault();
-      const selectedApp = dropdownOptions[selectedIndex];
-      if (selectedApp) {
-        handleToggleIgnoredApp(selectedApp.id);
-      }
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSelectedIndex((prev) =>
-        prev < dropdownOptions.length - 1 ? prev + 1 : prev,
-      );
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev));
-    } else if (e.key === "Escape") {
-      setShowDropdown(false);
-      setSelectedIndex(0);
-    } else if (
-      e.key === "Backspace" &&
-      !inputValue &&
-      effectiveIgnoredPlatformIds.length > 0
-    ) {
-      const lastBundleId =
-        effectiveIgnoredPlatformIds[effectiveIgnoredPlatformIds.length - 1];
-      handleToggleIgnoredApp(lastBundleId);
-    }
-  };
-
-  const handleInputChange = (value: string) => {
-    setInputValue(value);
-    setShowDropdown(true);
-    setSelectedIndex(0);
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setShowDropdown(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   return (
     <div className="flex flex-col gap-6">
@@ -327,82 +287,102 @@ export function NotificationSettingsView() {
                     to include it again.
                   </p>
                 </div>
-                <div className="relative" ref={containerRef}>
-                  <div
-                    className="flex min-h-[38px] w-full cursor-text flex-wrap items-center gap-2 rounded-md border p-2"
-                    onClick={() => inputRef.current?.focus()}
-                  >
-                    {effectiveIgnoredPlatformIds.map((bundleId: string) => {
-                      const isDefault = isDefaultIgnored(bundleId);
-                      return (
-                        <Badge
-                          key={bundleId}
-                          variant="secondary"
-                          className={cn([
-                            "flex items-center gap-1 px-2 py-0.5 text-xs",
-                            isDefault
-                              ? ["bg-neutral-200 text-neutral-700"]
-                              : ["bg-muted"],
-                          ])}
-                          title={isDefault ? "default" : undefined}
-                        >
-                          {bundleIdToName(bundleId)}
-                          {isDefault && (
-                            <span className="text-[10px] opacity-70">
-                              (default)
-                            </span>
-                          )}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="ml-0.5 h-3 w-3 p-0 hover:bg-transparent"
-                            onClick={() => handleToggleIgnoredApp(bundleId)}
-                          >
-                            <X className="h-2.5 w-2.5" />
-                          </Button>
-                        </Badge>
-                      );
-                    })}
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      className="placeholder:text-muted-foreground min-w-[120px] flex-1 bg-transparent text-sm outline-hidden"
-                      placeholder={
-                        effectiveIgnoredPlatformIds.length === 0
-                          ? "Type to search installed apps..."
-                          : ""
-                      }
-                      value={inputValue}
-                      onChange={(e) => handleInputChange(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      onFocus={() => setShowDropdown(true)}
-                    />
-                  </div>
-                  {showDropdown && dropdownOptions.length > 0 && (
-                    <div className="bg-popover absolute z-50 mt-1 w-full overflow-hidden rounded-md border shadow-md">
-                      <div className="max-h-[200px] overflow-auto py-1">
-                        {dropdownOptions.map((app, index) => {
+                <div className="flex flex-col gap-3">
+                  <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={searchOpen}
+                        className={cn([
+                          "flex min-h-[38px] w-full cursor-text flex-wrap items-center gap-2 rounded-md border p-2",
+                          "focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-hidden",
+                        ])}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSearchOpen(true);
+                          }
+                        }}
+                      >
+                        {effectiveIgnoredPlatformIds.map((bundleId: string) => {
+                          const isDefault = isDefaultIgnored(bundleId);
                           return (
-                            <button
-                              key={app.id}
-                              type="button"
+                            <Badge
+                              key={bundleId}
+                              variant="secondary"
                               className={cn([
-                                "flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm transition-colors",
-                                "hover:bg-accent hover:text-accent-foreground",
-                                selectedIndex === index &&
-                                  "bg-accent text-accent-foreground",
+                                "flex items-center gap-1 px-2 py-0.5 text-xs",
+                                isDefault
+                                  ? ["bg-neutral-200 text-neutral-700"]
+                                  : ["bg-muted"],
                               ])}
-                              onClick={() => handleToggleIgnoredApp(app.id)}
-                              onMouseEnter={() => setSelectedIndex(index)}
+                              title={isDefault ? "default" : undefined}
                             >
-                              <span>{app.name}</span>
-                            </button>
+                              {bundleIdToName(bundleId)}
+                              {isDefault && (
+                                <span className="text-[10px] opacity-70">
+                                  (default)
+                                </span>
+                              )}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="ml-0.5 h-3 w-3 p-0 hover:bg-transparent"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleToggleIgnoredApp(bundleId);
+                                }}
+                              >
+                                <X className="h-2.5 w-2.5" />
+                              </Button>
+                            </Badge>
                           );
                         })}
+                        <span className="text-muted-foreground text-sm">
+                          Search installed apps...
+                        </span>
                       </div>
-                    </div>
-                  )}
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="p-0"
+                      align="start"
+                      style={{ width: "var(--radix-popover-trigger-width)" }}
+                    >
+                      <Command>
+                        <CommandInput
+                          placeholder="Search installed apps..."
+                          value={searchQuery}
+                          onValueChange={setSearchQuery}
+                        />
+                        <CommandEmpty>
+                          <div className="text-muted-foreground px-2 py-1.5 text-sm">
+                            No apps found.
+                          </div>
+                        </CommandEmpty>
+                        <CommandList>
+                          <CommandGroup className="max-h-[250px] overflow-y-auto">
+                            {dropdownOptions.map((app) => (
+                              <CommandItem
+                                key={app.id}
+                                value={`${app.name} ${app.id}`}
+                                onSelect={() => handleToggleIgnoredApp(app.id)}
+                                className={cn([
+                                  "cursor-pointer",
+                                  "hover:bg-neutral-200! focus:bg-neutral-200! aria-selected:bg-transparent",
+                                ])}
+                              >
+                                <span className="flex-1 truncate">
+                                  {app.name}
+                                </span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
             )}
