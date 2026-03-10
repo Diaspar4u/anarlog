@@ -1,7 +1,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   commands as detectCommands,
@@ -37,6 +37,7 @@ import { cn } from "@hypr/utils";
 import {
   getEffectiveIgnoredPlatformIds,
   getMicDetectionAppOptions,
+  orderIgnoredPlatformIdsForWrap,
 } from "./notification-app-options";
 
 import { useConfigValues } from "~/shared/config";
@@ -45,6 +46,10 @@ import * as settings from "~/store/tinybase/store/settings";
 export function NotificationSettingsView() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const chipContainerRef = useRef<HTMLDivElement>(null);
+  const [chipContainerWidth, setChipContainerWidth] = useState<number | null>(
+    null,
+  );
 
   const configs = useConfigValues([
     "notification_event",
@@ -170,14 +175,35 @@ export function NotificationSettingsView() {
     inputValue: searchQuery,
     defaultIgnoredBundleIds,
   });
-  const effectiveIgnoredPlatformIds = getEffectiveIgnoredPlatformIds({
-    installedApps: allInstalledApps,
-    ignoredPlatforms,
-    includedPlatforms,
-    defaultIgnoredBundleIds,
-  }).sort((left, right) =>
-    bundleIdToName(left).localeCompare(bundleIdToName(right)),
-  );
+  const effectiveIgnoredPlatformIds = orderIgnoredPlatformIdsForWrap({
+    bundleIds: getEffectiveIgnoredPlatformIds({
+      installedApps: allInstalledApps,
+      ignoredPlatforms,
+      includedPlatforms,
+      defaultIgnoredBundleIds,
+    }),
+    availableWidth: chipContainerWidth,
+    bundleIdToName,
+    isDefaultIgnored,
+  });
+
+  useEffect(() => {
+    const element = chipContainerRef.current;
+    if (!element) {
+      return;
+    }
+
+    const updateWidth = () => {
+      setChipContainerWidth(Math.max(0, element.clientWidth - 16));
+    };
+
+    updateWidth();
+
+    const observer = new ResizeObserver(() => updateWidth());
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, []);
 
   const handleToggleIgnoredApp = (bundleId: string) => {
     if (!bundleId) {
@@ -291,6 +317,7 @@ export function NotificationSettingsView() {
                   <Popover open={searchOpen} onOpenChange={setSearchOpen}>
                     <PopoverTrigger asChild>
                       <div
+                        ref={chipContainerRef}
                         role="button"
                         tabIndex={0}
                         aria-expanded={searchOpen}

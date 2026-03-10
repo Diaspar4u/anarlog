@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import {
   getEffectiveIgnoredPlatformIds,
   getMicDetectionAppOptions,
+  orderIgnoredPlatformIdsForWrap,
 } from "./notification-app-options";
 
 describe("getMicDetectionAppOptions", () => {
@@ -53,5 +54,24 @@ describe("getEffectiveIgnoredPlatformIds", () => {
         defaultIgnoredBundleIds: ["com.microsoft.VSCode"],
       }),
     ).toEqual([]);
+  });
+});
+
+describe("orderIgnoredPlatformIdsForWrap", () => {
+  test("reorders chips to better fill each row", () => {
+    const ordered = orderIgnoredPlatformIdsForWrap({
+      bundleIds: ["a", "b", "c", "d"],
+      availableWidth: 214,
+      bundleIdToName: (bundleId) =>
+        ({
+          a: "ABCDEFGHIJ",
+          b: "KLMNOPQRST",
+          c: "Tiny",
+          d: "Mini",
+        })[bundleId] ?? bundleId,
+      isDefaultIgnored: () => false,
+    });
+
+    expect(ordered).toEqual(["a", "d", "b", "c"]);
   });
 });
