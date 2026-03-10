@@ -1,9 +1,9 @@
-import { forwardRef, useMemo } from "react";
+import { forwardRef, useCallback, useMemo } from "react";
 
 import { commands as openerCommands } from "@hypr/plugin-opener2";
 import { type JSONContent, TiptapEditor } from "@hypr/tiptap/editor";
 import NoteEditor from "@hypr/tiptap/editor";
-import { parseJsonContent } from "@hypr/tiptap/shared";
+import { isEmptyTiptapContent, parseJsonContent } from "@hypr/tiptap/shared";
 
 import { useSearchEngine } from "~/search/contexts/engine";
 import { useImageUpload } from "~/shared/hooks/useImageUpload";
@@ -26,12 +26,23 @@ export const EnhancedEditor = forwardRef<
     [content],
   );
 
-  const handleChange = main.UI.useSetPartialRowCallback(
+  const persistChange = main.UI.useSetPartialRowCallback(
     "enhanced_notes",
     enhancedNoteId,
     (input: JSONContent) => ({ content: JSON.stringify(input) }),
     [],
     main.STORE_ID,
+  );
+
+  const handleChange = useCallback(
+    (input: JSONContent) => {
+      if (content === undefined && isEmptyTiptapContent(input)) {
+        return;
+      }
+
+      persistChange(input);
+    },
+    [content, persistChange],
   );
 
   const { search } = useSearchEngine();

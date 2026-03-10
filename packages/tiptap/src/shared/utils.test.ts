@@ -3,7 +3,65 @@ import type { JSONContent } from "@tiptap/react";
 import { describe, expect, test } from "vitest";
 
 import { getExtensions } from "./extensions";
-import { isValidTiptapContent, json2md, md2json } from "./utils";
+import {
+  isEmptyTiptapContent,
+  isValidTiptapContent,
+  json2md,
+  md2json,
+} from "./utils";
+
+describe("isEmptyTiptapContent", () => {
+  test("treats empty paragraphs as empty", () => {
+    expect(
+      isEmptyTiptapContent({
+        type: "doc",
+        content: [{ type: "paragraph" }],
+      }),
+    ).toBe(true);
+  });
+
+  test("treats whitespace-only text as empty", () => {
+    expect(
+      isEmptyTiptapContent({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "   " }],
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  test("treats text content as non-empty", () => {
+    expect(
+      isEmptyTiptapContent({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "hello" }],
+          },
+        ],
+      }),
+    ).toBe(false);
+  });
+
+  test("treats non-text nodes as non-empty", () => {
+    expect(
+      isEmptyTiptapContent({
+        type: "doc",
+        content: [
+          {
+            type: "image",
+            attrs: { src: "https://example.com/image.png" },
+          },
+        ],
+      }),
+    ).toBe(false);
+  });
+});
 
 describe("json2md", () => {
   test("renders underline as html tags", () => {

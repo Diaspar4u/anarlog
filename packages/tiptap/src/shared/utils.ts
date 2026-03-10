@@ -8,6 +8,23 @@ export const EMPTY_TIPTAP_DOC: JSONContent = {
   content: [{ type: "paragraph" }],
 };
 
+const EMPTY_CONTAINER_NODE_TYPES = new Set([
+  "blockquote",
+  "bulletList",
+  "codeBlock",
+  "doc",
+  "heading",
+  "listItem",
+  "orderedList",
+  "paragraph",
+  "table",
+  "tableCell",
+  "tableHeader",
+  "tableRow",
+  "taskItem",
+  "taskList",
+]);
+
 let _markdownManager: MarkdownManager | null = null;
 
 function getMarkdownManager(): MarkdownManager {
@@ -24,6 +41,24 @@ export function isValidTiptapContent(content: unknown): content is JSONContent {
 
   const obj = content as Record<string, unknown>;
   return obj.type === "doc" && Array.isArray(obj.content);
+}
+
+export function isEmptyTiptapContent(
+  content: JSONContent | undefined,
+): boolean {
+  if (!content) {
+    return true;
+  }
+
+  if (content.type === "text") {
+    return !content.text?.trim();
+  }
+
+  if (content.content?.length) {
+    return !content.content.some((child) => !isEmptyTiptapContent(child));
+  }
+
+  return EMPTY_CONTAINER_NODE_TYPES.has(content.type ?? "");
 }
 
 export function parseJsonContent(raw: string | undefined | null): JSONContent {

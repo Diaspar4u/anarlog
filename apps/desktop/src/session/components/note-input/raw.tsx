@@ -7,6 +7,7 @@ import NoteEditor, {
   type TiptapEditor,
 } from "@hypr/tiptap/editor";
 import {
+  isEmptyTiptapContent,
   parseJsonContent,
   type PlaceholderFunction,
 } from "@hypr/tiptap/shared";
@@ -50,6 +51,10 @@ export const RawEditor = forwardRef<
 
   const handleChange = useCallback(
     (input: JSONContent) => {
+      if (rawMd === undefined && isEmptyTiptapContent(input)) {
+        return;
+      }
+
       persistChange(input);
 
       if (!hasTrackedWriteRef.current) {
@@ -63,7 +68,7 @@ export const RawEditor = forwardRef<
         }
       }
     },
-    [persistChange, hasNonEmptyText],
+    [hasNonEmptyText, persistChange, rawMd],
   );
 
   const { search } = useSearchEngine();
