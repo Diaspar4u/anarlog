@@ -1,34 +1,71 @@
 import { describe, expect, test } from "vitest";
 
-import { getIgnoredAppOptions } from "./notification-app-options";
+import {
+  getEffectiveIgnoredPlatformIds,
+  getMicDetectionAppOptions,
+} from "./notification-app-options";
 
-describe("getIgnoredAppOptions", () => {
-  test("returns installed app matches for partial searches", () => {
-    const options = getIgnoredAppOptions({
-      allInstalledApps: [
-        { id: "us.zoom.xos", name: "Zoom Workplace" },
-        { id: "com.tinyspeck.slackmacgap", name: "Slack" },
-      ],
+describe("getMicDetectionAppOptions", () => {
+  test("shows default ignored apps as includable matches", () => {
+    const options = getMicDetectionAppOptions({
+      allInstalledApps: [{ id: "com.microsoft.VSCode", name: "VS Code" }],
       ignoredPlatforms: [],
-      inputValue: "zoom",
-      defaultIgnoredBundleIds: [],
+      includedPlatforms: [],
+      inputValue: "code",
+      defaultIgnoredBundleIds: ["com.microsoft.VSCode"],
     });
 
-    expect(options).toEqual([{ id: "us.zoom.xos", name: "Zoom Workplace" }]);
+    expect(options).toEqual([
+      {
+        id: "com.microsoft.VSCode",
+        name: "VS Code",
+        action: "include",
+        isDefaultIgnored: true,
+      },
+    ]);
   });
 
-  test("filters out already ignored and default ignored apps", () => {
-    const options = getIgnoredAppOptions({
-      allInstalledApps: [
-        { id: "us.zoom.xos", name: "Zoom Workplace" },
-        { id: "com.tinyspeck.slackmacgap", name: "Slack" },
-        { id: "com.openai.chat", name: "ChatGPT" },
-      ],
-      ignoredPlatforms: ["com.tinyspeck.slackmacgap"],
-      inputValue: "",
-      defaultIgnoredBundleIds: ["com.openai.chat"],
+  test("shows explicitly included default apps as excludable again", () => {
+    const options = getMicDetectionAppOptions({
+      allInstalledApps: [{ id: "com.microsoft.VSCode", name: "VS Code" }],
+      ignoredPlatforms: [],
+      includedPlatforms: ["com.microsoft.VSCode"],
+      inputValue: "code",
+      defaultIgnoredBundleIds: ["com.microsoft.VSCode"],
     });
 
-    expect(options).toEqual([{ id: "us.zoom.xos", name: "Zoom Workplace" }]);
+    expect(options).toEqual([
+      {
+        id: "com.microsoft.VSCode",
+        name: "VS Code",
+        action: "exclude",
+        isDefaultIgnored: true,
+      },
+    ]);
+  });
+});
+
+describe("getEffectiveIgnoredPlatformIds", () => {
+  test("includes installed default ignored apps unless explicitly included", () => {
+    expect(
+      getEffectiveIgnoredPlatformIds({
+        installedApps: [
+          { id: "com.microsoft.VSCode", name: "VS Code" },
+          { id: "us.zoom.xos", name: "Zoom Workplace" },
+        ],
+        ignoredPlatforms: [],
+        includedPlatforms: [],
+        defaultIgnoredBundleIds: ["com.microsoft.VSCode"],
+      }),
+    ).toEqual(["com.microsoft.VSCode"]);
+
+    expect(
+      getEffectiveIgnoredPlatformIds({
+        installedApps: [{ id: "com.microsoft.VSCode", name: "VS Code" }],
+        ignoredPlatforms: [],
+        includedPlatforms: ["com.microsoft.VSCode"],
+        defaultIgnoredBundleIds: ["com.microsoft.VSCode"],
+      }),
+    ).toEqual([]);
   });
 });

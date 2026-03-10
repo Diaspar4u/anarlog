@@ -21,7 +21,10 @@ import {
 import { Switch } from "@hypr/ui/components/ui/switch";
 import { cn } from "@hypr/utils";
 
-import { getIgnoredAppOptions } from "./notification-app-options";
+import {
+  getEffectiveIgnoredPlatformIds,
+  getMicDetectionAppOptions,
+} from "./notification-app-options";
 
 import { useConfigValues } from "~/shared/config";
 import * as settings from "~/store/tinybase/store/settings";
@@ -38,6 +41,7 @@ export function NotificationSettingsView() {
     "notification_detect",
     "respect_dnd",
     "ignored_platforms",
+    "included_platforms",
     "mic_active_threshold",
   ] as const);
 
@@ -106,6 +110,13 @@ export function NotificationSettingsView() {
     settings.STORE_ID,
   );
 
+  const handleSetIncludedPlatforms = settings.UI.useSetValueCallback(
+    "included_platforms",
+    (value: string) => value,
+    [],
+    settings.STORE_ID,
+  );
+
   const handleSetMicActiveThreshold = settings.UI.useSetValueCallback(
     "mic_active_threshold",
     (value: number) => value,
@@ -119,6 +130,7 @@ export function NotificationSettingsView() {
       notification_detect: configs.notification_detect,
       respect_dnd: configs.respect_dnd,
       ignored_platforms: configs.ignored_platforms,
+      included_platforms: configs.included_platforms,
       mic_active_threshold: configs.mic_active_threshold,
     },
     listeners: {
@@ -131,6 +143,7 @@ export function NotificationSettingsView() {
       handleSetNotificationDetect(value.notification_detect);
       handleSetRespectDnd(value.respect_dnd);
       handleSetIgnoredPlatforms(JSON.stringify(value.ignored_platforms));
+      handleSetIncludedPlatforms(JSON.stringify(value.included_platforms));
       handleSetMicActiveThreshold(value.mic_active_threshold);
     },
   });
@@ -138,36 +151,51 @@ export function NotificationSettingsView() {
   const anyNotificationEnabled =
     configs.notification_event || configs.notification_detect;
   const ignoredPlatforms = form.getFieldValue("ignored_platforms");
+  const includedPlatforms = form.getFieldValue("included_platforms");
 
-  const dropdownOptions = getIgnoredAppOptions({
+  const dropdownOptions = getMicDetectionAppOptions({
     allInstalledApps,
     ignoredPlatforms,
+    includedPlatforms,
     inputValue,
     defaultIgnoredBundleIds,
   });
+  const effectiveIgnoredPlatformIds = getEffectiveIgnoredPlatformIds({
+    installedApps: allInstalledApps,
+    ignoredPlatforms,
+    includedPlatforms,
+    defaultIgnoredBundleIds,
+  }).sort((left, right) =>
+    bundleIdToName(left).localeCompare(bundleIdToName(right)),
+  );
 
-  const handleAddIgnoredApp = (bundleId: string) => {
-    if (
-      !bundleId ||
-      ignoredPlatforms.includes(bundleId) ||
-      isDefaultIgnored(bundleId)
-    ) {
+  const handleToggleIgnoredApp = (bundleId: string) => {
+    if (!bundleId) {
       return;
     }
 
-    form.setFieldValue("ignored_platforms", [...ignoredPlatforms, bundleId]);
+    const defaultIgnored = isDefaultIgnored(bundleId);
+    const isCurrentlyIgnored =
+      ignoredPlatforms.includes(bundleId) ||
+      (defaultIgnored && !includedPlatforms.includes(bundleId));
+
+    const nextIgnoredPlatforms = isCurrentlyIgnored
+      ? ignoredPlatforms.filter((appId: string) => appId !== bundleId)
+      : defaultIgnored
+        ? ignoredPlatforms.filter((appId: string) => appId !== bundleId)
+        : [...ignoredPlatforms, bundleId];
+    const nextIncludedPlatforms = isCurrentlyIgnored
+      ? defaultIgnored && !includedPlatforms.includes(bundleId)
+        ? [...includedPlatforms, bundleId]
+        : includedPlatforms
+      : includedPlatforms.filter((appId: string) => appId !== bundleId);
+
+    form.setFieldValue("ignored_platforms", nextIgnoredPlatforms);
+    form.setFieldValue("included_platforms", nextIncludedPlatforms);
     void form.handleSubmit();
     setInputValue("");
     setShowDropdown(false);
     setSelectedIndex(0);
-  };
-
-  const handleRemoveIgnoredApp = (bundleId: string) => {
-    const updated = ignoredPlatforms.filter(
-      (appId: string) => appId !== bundleId,
-    );
-    form.setFieldValue("ignored_platforms", updated);
-    void form.handleSubmit();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -175,7 +203,7 @@ export function NotificationSettingsView() {
       e.preventDefault();
       const selectedApp = dropdownOptions[selectedIndex];
       if (selectedApp) {
-        handleAddIgnoredApp(selectedApp.id);
+        handleToggleIgnoredApp(selectedApp.id);
       }
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -191,12 +219,11 @@ export function NotificationSettingsView() {
     } else if (
       e.key === "Backspace" &&
       !inputValue &&
-      ignoredPlatforms.length > 0
+      effectiveIgnoredPlatformIds.length > 0
     ) {
-      const lastBundleId = ignoredPlatforms[ignoredPlatforms.length - 1];
-      if (!isDefaultIgnored(lastBundleId)) {
-        handleRemoveIgnoredApp(lastBundleId);
-      }
+      const lastBundleId =
+        effectiveIgnoredPlatformIds[effectiveIgnoredPlatformIds.length - 1];
+      handleToggleIgnoredApp(lastBundleId);
     }
   };
 
@@ -296,7 +323,8 @@ export function NotificationSettingsView() {
                     Exclude apps from detection
                   </h4>
                   <p className="text-xs text-neutral-600">
-                    These apps will not trigger detection.
+                    Search installed apps to exclude them, or click an excluded
+                    app to include it again.
                   </p>
                 </div>
                 <div className="relative" ref={containerRef}>
@@ -304,7 +332,7 @@ export function NotificationSettingsView() {
                     className="flex min-h-[38px] w-full cursor-text flex-wrap items-center gap-2 rounded-md border p-2"
                     onClick={() => inputRef.current?.focus()}
                   >
-                    {ignoredPlatforms.map((bundleId: string) => {
+                    {effectiveIgnoredPlatformIds.map((bundleId: string) => {
                       const isDefault = isDefaultIgnored(bundleId);
                       return (
                         <Badge
@@ -324,17 +352,15 @@ export function NotificationSettingsView() {
                               (default)
                             </span>
                           )}
-                          {!isDefault && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="ml-0.5 h-3 w-3 p-0 hover:bg-transparent"
-                              onClick={() => handleRemoveIgnoredApp(bundleId)}
-                            >
-                              <X className="h-2.5 w-2.5" />
-                            </Button>
-                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="ml-0.5 h-3 w-3 p-0 hover:bg-transparent"
+                            onClick={() => handleToggleIgnoredApp(bundleId)}
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </Button>
                         </Badge>
                       );
                     })}
@@ -343,8 +369,8 @@ export function NotificationSettingsView() {
                       type="text"
                       className="placeholder:text-muted-foreground min-w-[120px] flex-1 bg-transparent text-sm outline-hidden"
                       placeholder={
-                        ignoredPlatforms.length === 0
-                          ? "Type to add apps..."
+                        effectiveIgnoredPlatformIds.length === 0
+                          ? "Type to search installed apps..."
                           : ""
                       }
                       value={inputValue}
@@ -362,15 +388,20 @@ export function NotificationSettingsView() {
                               key={app.id}
                               type="button"
                               className={cn([
-                                "w-full px-3 py-1.5 text-left text-sm transition-colors",
+                                "flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm transition-colors",
                                 "hover:bg-accent hover:text-accent-foreground",
                                 selectedIndex === index &&
                                   "bg-accent text-accent-foreground",
                               ])}
-                              onClick={() => handleAddIgnoredApp(app.id)}
+                              onClick={() => handleToggleIgnoredApp(app.id)}
                               onMouseEnter={() => setSelectedIndex(index)}
                             >
-                              {app.name}
+                              <span>{app.name}</span>
+                              <span className="text-muted-foreground ml-2 text-xs">
+                                {app.action === "include"
+                                  ? "Include"
+                                  : "Exclude"}
+                              </span>
                             </button>
                           );
                         })}
