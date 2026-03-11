@@ -282,6 +282,24 @@ function CollectionsPage() {
     }, 5000);
   }, [queryClient]);
 
+  const upsertDraftArticle = useCallback(
+    (draft: DraftArticle) => {
+      queryClient.setQueryData(
+        ["draftArticles"],
+        (old: DraftArticle[] = []) => {
+          const existingIndex = old.findIndex(
+            (item) => item.path === draft.path && item.branch === draft.branch,
+          );
+          if (existingIndex !== -1) {
+            return old;
+          }
+          return [draft, ...old];
+        },
+      );
+    },
+    [queryClient],
+  );
+
   const createMutation = useMutation({
     mutationFn: async (params: {
       folder: string;
@@ -299,25 +317,39 @@ function CollectionsPage() {
       }
       return response.json();
     },
-    onSuccess: (data, variables) => {
+    onSuccess: async (data, variables) => {
       setEditingItem(null);
-      if (data.branch && variables.type === "file") {
-        const slug = variables.name.replace(/\.mdx$/, "");
-        queryClient.setQueryData(
-          ["draftArticles"],
-          (old: DraftArticle[] = []) => [
-            ...old,
-            {
+
+      if (data.branch && data.path && variables.type === "file") {
+        await queryClient.refetchQueries({
+          queryKey: ["draftArticles"],
+          type: "active",
+        });
+
+        const slug = data.path
+          .split("/")
+          .pop()
+          ?.replace(/\.mdx$/, "");
+        if (slug) {
+          const draftArticles =
+            queryClient.getQueryData<DraftArticle[]>(["draftArticles"]) || [];
+          const hasCreatedDraft = draftArticles.some(
+            (item) => item.path === data.path && item.branch === data.branch,
+          );
+
+          if (!hasCreatedDraft) {
+            upsertDraftArticle({
               name: variables.name,
-              path: `${variables.folder}/${variables.name}`,
+              path: data.path,
               slug,
               branch: data.branch,
-            },
-          ],
-        );
+            });
+          }
+        }
+
         scheduleDraftSync();
       } else {
-        queryClient.invalidateQueries({ queryKey: ["draftArticles"] });
+        await queryClient.invalidateQueries({ queryKey: ["draftArticles"] });
       }
     },
   });
