@@ -2722,6 +2722,9 @@ const FileEditor = React.forwardRef<
     null,
   );
   const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaInsertSelectionRef = useRef<{ from: number; to: number } | null>(
+    null,
+  );
   const onSaveRef = useRef(onSave);
 
   const handleImageUpload = useCallback(
@@ -2824,19 +2827,38 @@ const FileEditor = React.forwardRef<
     [importFromDocs, slug, metaTitle, author, metaDescription, coverImage],
   );
 
+  const handleOpenMediaSelector = useCallback(() => {
+    if (editor) {
+      const { from, to } = editor.state.selection;
+      mediaInsertSelectionRef.current = { from, to };
+    }
+
+    setIsMediaSelectorOpen(true);
+  }, [editor]);
+
   const handleMediaLibrarySelect = useCallback(
     (publicUrl: string) => {
       if (editor) {
+        const selection = mediaInsertSelectionRef.current ?? {
+          from: editor.state.selection.from,
+          to: editor.state.selection.to,
+        };
+
         editor
           .chain()
           .focus()
-          .insertContent({
+          .insertContentAt(selection, {
             type: "image",
-            attrs: { src: publicUrl },
+            attrs: {
+              src: publicUrl,
+              alt: "",
+              attachmentId: "",
+            },
           })
           .run();
         setHasUnsavedChanges(true);
       }
+      mediaInsertSelectionRef.current = null;
       setIsMediaSelectorOpen(false);
     },
     [editor],
@@ -3138,8 +3160,7 @@ const FileEditor = React.forwardRef<
                 editor={editor}
                 onGoogleDocsImport={handleGoogleDocsImport}
                 isImporting={isImporting}
-                onAddImageFromLibrary={() => setIsMediaSelectorOpen(true)}
-                showToolbar={false}
+                onAddImageFromLibrary={handleOpenMediaSelector}
               />
             </div>
           </ResizablePanel>
@@ -3167,7 +3188,7 @@ const FileEditor = React.forwardRef<
             editor={editor}
             onGoogleDocsImport={handleGoogleDocsImport}
             isImporting={isImporting}
-            onAddImageFromLibrary={() => setIsMediaSelectorOpen(true)}
+            onAddImageFromLibrary={handleOpenMediaSelector}
           />
         </ResizablePanel>
         <ResizableHandle className="w-px bg-neutral-200" />
