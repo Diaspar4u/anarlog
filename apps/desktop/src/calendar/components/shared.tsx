@@ -22,7 +22,8 @@ const _PROVIDERS = [
     badge: "",
     icon: <Icon icon="logos:apple" width={20} height={20} />,
     platform: "macos",
-    docsPath: "https://char.com/docs/calendar/apple",
+    docsPath:
+      "https://char.com/docs/calendar/apple?utm_source=app&utm_medium=settings&utm_campaign=organic",
     nangoIntegrationId: undefined,
   },
   {
@@ -32,7 +33,8 @@ const _PROVIDERS = [
     badge: "Internal Use Only",
     icon: <Icon icon="logos:google-calendar" width={20} height={20} />,
     platform: "all",
-    docsPath: "https://char.com/docs/calendar/gcal",
+    docsPath:
+      "https://char.com/docs/calendar/gcal?utm_source=app&utm_medium=settings&utm_campaign=organic",
     nangoIntegrationId: "google-calendar",
   },
   {
@@ -42,7 +44,8 @@ const _PROVIDERS = [
     badge: "Coming soon",
     icon: <OutlookIcon size={20} />,
     platform: "all",
-    docsPath: "https://char.com/docs/calendar/outlook",
+    docsPath:
+      "https://char.com/docs/calendar/outlook?utm_source=app&utm_medium=settings&utm_campaign=organic",
     nangoIntegrationId: undefined,
   },
 ] as const satisfies readonly CalendarProvider[];

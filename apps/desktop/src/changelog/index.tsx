@@ -145,7 +145,7 @@ function ChangelogHeader({
             className="gap-1.5 text-neutral-600 hover:text-black"
             onClick={() =>
               openerCommands.openUrl(
-                `https://char.com/changelog/${version}`,
+                `https://char.com/changelog/${version}?utm_source=app&utm_medium=changelog&utm_campaign=organic`,
                 null,
               )
             }

@@ -57,7 +57,7 @@ const _PROVIDERS = [
       models: { label: "Available models", url: "https://lmstudio.ai/models" },
       setup: {
         label: "Setup guide",
-        url: "https://char.com/docs/faq/local-llm-setup/#lm-studio-setup",
+        url: "https://char.com/docs/faq/local-llm-setup/?utm_source=app&utm_medium=settings&utm_campaign=organic#lm-studio-setup",
       },
     },
   },
@@ -76,7 +76,7 @@ const _PROVIDERS = [
       models: { label: "Available models", url: "https://ollama.com/library" },
       setup: {
         label: "Setup guide",
-        url: "https://char.com/docs/faq/local-llm-setup/#ollama-setup",
+        url: "https://char.com/docs/faq/local-llm-setup/?utm_source=app&utm_medium=settings&utm_campaign=organic#ollama-setup",
       },
     },
   },
