@@ -3,7 +3,7 @@ import { type KeyboardEvent, useMemo } from "react";
 import { useSearch } from "~/search/contexts/ui";
 import { useTabs } from "~/store/zustand/tabs";
 
-export function useSearchKeyboard() {
+export function useSearchKeyboard(onEscapeEmpty?: () => void) {
   const { query, setQuery, selectedIndex, setSelectedIndex, results } =
     useSearch();
   const openNew = useTabs((state) => state.openNew);
@@ -20,6 +20,7 @@ export function useSearchKeyboard() {
         setSelectedIndex(-1);
       } else {
         e.currentTarget.blur();
+        onEscapeEmpty?.();
       }
     }
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && query.trim()) {

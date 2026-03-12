@@ -9,11 +9,15 @@ import { useSearchKeyboard } from "./use-search-keyboard";
 
 import { useSearch } from "~/search/contexts/ui";
 
-export function SidebarSearchInput() {
+export function SidebarSearchInput({
+  onEscapeEmpty,
+}: {
+  onEscapeEmpty?: () => void;
+}) {
   const { query, setQuery, inputRef, setFocusImpl, isSearching, isIndexing } =
     useSearch();
   const isCmdPressed = useCmdKeyPressed();
-  const { onKeyDown } = useSearchKeyboard();
+  const { onKeyDown } = useSearchKeyboard(onEscapeEmpty);
 
   useEffect(() => {
     setFocusImpl(() => {
