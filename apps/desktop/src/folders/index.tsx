@@ -16,7 +16,7 @@ import { sessionOps } from "~/store/tinybase/persister/session/ops";
 import * as main from "~/store/tinybase/store/main";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 
-function useFolderTree() {
+export function useFolderTree() {
   const sessionIds = main.UI.useRowIds("sessions", main.STORE_ID);
   const store = main.UI.useStore(main.STORE_ID);
 
@@ -56,7 +56,7 @@ function useFolderTree() {
   }, [sessionIds, store]);
 }
 
-function useFolderName(folderId: string) {
+export function useFolderName(folderId: string) {
   return useMemo(() => {
     const parts = folderId.split("/");
     return parts[parts.length - 1] || "Untitled";
