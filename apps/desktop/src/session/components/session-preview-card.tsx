@@ -21,6 +21,30 @@ import {
 } from "~/session/hooks/useEnhancedNotes";
 import * as main from "~/store/tinybase/store/main";
 
+const previewCardComponents: typeof streamdownComponents = {
+  ...streamdownComponents,
+  h1: (props) => (
+    <h1 className="text-md mt-3 mb-1 font-semibold first:mt-0">
+      {props.children}
+    </h1>
+  ),
+  h2: (props) => (
+    <h2 className="mt-3 mb-1 text-sm font-semibold first:mt-0">
+      {props.children}
+    </h2>
+  ),
+  h3: (props) => (
+    <h3 className="mt-2 mb-1 text-xs font-semibold first:mt-0">
+      {props.children}
+    </h3>
+  ),
+  h4: (props) => (
+    <h4 className="mt-2 mb-1 text-xs font-semibold first:mt-0">
+      {props.children}
+    </h4>
+  ),
+};
+
 const MAX_PREVIEW_LENGTH = 200;
 const FOLLOW_RANGE = 16;
 const SPRING_CONFIG = { stiffness: 300, damping: 30, mass: 0.5 };
@@ -284,15 +308,10 @@ export function SessionPreviewCard({
 
           {(previewMarkdown || previewPlainText) && (
             <div className="mt-1 flex flex-col gap-1">
-              {previewLabel && (
-                <div className="text-xs font-medium text-neutral-400">
-                  {previewLabel}
-                </div>
-              )}
               <div className="max-h-24 overflow-hidden [mask-image:linear-gradient(to_bottom,black_60%,transparent)] text-neutral-600">
                 {previewMarkdown ? (
                   <Streamdown
-                    components={streamdownComponents}
+                    components={previewCardComponents}
                     className="flex flex-col text-xs"
                     isAnimating={false}
                   >
