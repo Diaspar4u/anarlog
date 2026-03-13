@@ -39,6 +39,7 @@ struct OutlookMe {
     display_name: Option<String>,
 }
 
+// TODO: cache identity information in the database instead of fetching on every request
 async fn fetch_identity(
     nango: &hypr_nango::NangoClient,
     integration_id: &str,
@@ -100,47 +101,47 @@ pub async fn whoami(
         .list_user_connections(&auth.token, &auth.claims.sub)
         .await?;
 
-    let mut accounts = Vec::with_capacity(rows.len());
+    let futures = rows.into_iter().map(|row| {
+        let nango = state.nango.clone();
+        async move {
+            if row.status == "reconnect_required" {
+                return WhoAmIItem {
+                    integration_id: row.integration_id,
+                    connection_id: row.connection_id,
+                    email: None,
+                    display_name: None,
+                    error: Some("reconnect_required".to_string()),
+                };
+            }
 
-    for row in rows {
-        if row.status == "reconnect_required" {
-            accounts.push(WhoAmIItem {
-                integration_id: row.integration_id,
-                connection_id: row.connection_id,
-                email: None,
-                display_name: None,
-                error: Some("reconnect_required".to_string()),
-            });
-            continue;
-        }
-
-        match fetch_identity(&state.nango, &row.integration_id, &row.connection_id).await {
-            Ok((email, display_name)) => {
-                accounts.push(WhoAmIItem {
+            match fetch_identity(&nango, &row.integration_id, &row.connection_id).await {
+                Ok((email, display_name)) => WhoAmIItem {
                     integration_id: row.integration_id,
                     connection_id: row.connection_id,
                     email,
                     display_name,
                     error: None,
-                });
-            }
-            Err(e) => {
-                tracing::warn!(
-                    integration_id = %row.integration_id,
-                    connection_id = %row.connection_id,
-                    error = %e,
-                    "failed to fetch identity for connection"
-                );
-                accounts.push(WhoAmIItem {
-                    integration_id: row.integration_id,
-                    connection_id: row.connection_id,
-                    email: None,
-                    display_name: None,
-                    error: Some(e),
-                });
+                },
+                Err(e) => {
+                    tracing::warn!(
+                        integration_id = %row.integration_id,
+                        connection_id = %row.connection_id,
+                        error = %e,
+                        "failed to fetch identity for connection"
+                    );
+                    WhoAmIItem {
+                        integration_id: row.integration_id,
+                        connection_id: row.connection_id,
+                        email: None,
+                        display_name: None,
+                        error: Some(e),
+                    }
+                }
             }
         }
-    }
+    });
+
+    let accounts = futures_util::future::join_all(futures).await;
 
     Ok(Json(WhoAmIResponse { accounts }))
 }
