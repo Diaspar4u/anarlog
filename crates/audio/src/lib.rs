@@ -1,8 +1,12 @@
+mod async_ring;
+mod capture;
 mod errors;
 mod mic;
 mod norm;
+mod rt_ring;
 mod speaker;
 
+pub use capture::*;
 pub use errors::*;
 pub use mic::*;
 pub use norm::*;
@@ -83,7 +87,10 @@ impl AudioInput {
         {
             let host = cpal::default_host();
             let device = host.default_input_device().unwrap();
-            device.name().unwrap_or("Unknown Microphone".to_string())
+            device
+                .description()
+                .map(|d| d.name().to_string())
+                .unwrap_or("Unknown Microphone".to_string())
         }
     }
 
@@ -105,9 +112,28 @@ impl AudioInput {
 
         devices
             .into_iter()
-            .filter_map(|d| d.name().ok())
+            .filter_map(|d| d.description().map(|desc| desc.name().to_string()).ok())
             .filter(|d| d != "hypr-audio-tap")
             .collect()
+    }
+
+    pub fn from_mic_and_speaker(config: CaptureConfig) -> Result<CaptureStream, Error> {
+        capture::open_capture(config)
+    }
+
+    pub fn from_speaker_capture(
+        sample_rate: u32,
+        chunk_size: usize,
+    ) -> Result<CaptureStream, Error> {
+        capture::open_speaker_capture(sample_rate, chunk_size)
+    }
+
+    pub fn from_mic_capture(
+        device: Option<String>,
+        sample_rate: u32,
+        chunk_size: usize,
+    ) -> Result<CaptureStream, Error> {
+        capture::open_mic_capture(device, sample_rate, chunk_size)
     }
 
     pub fn from_mic(device_name: Option<String>) -> Result<Self, crate::Error> {
