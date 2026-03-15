@@ -1,0 +1,63 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2024"
+homepage = "https://char.com"
+license = "GPL-3.0"
+repository = "https://github.com/fastrepl/char"
+description = "Live transcription and audio tools"
+
+[[bin]]
+name = "char"
+path = "src/main.rs"
+
+[dependencies]
+hypr-api-env = { workspace = true }
+hypr-audio = { workspace = true }
+hypr-audio-actual = { workspace = true }
+hypr-audio-utils = { workspace = true }
+hypr-file = { workspace = true }
+hypr-fs-sync-core = { workspace = true }
+hypr-language = { workspace = true }
+hypr-listener-core = { workspace = true }
+hypr-listener2-core = { workspace = true }
+hypr-local-model = { workspace = true }
+hypr-local-stt-core = { workspace = true }
+hypr-local-stt-server = { workspace = true }
+hypr-model-downloader = { workspace = true }
+hypr-openrouter = { workspace = true }
+hypr-storage = { workspace = true }
+hypr-transcribe-proxy = { workspace = true }
+hypr-transcript = { workspace = true }
+owhisper-client = { workspace = true }
+owhisper-interface = { workspace = true }
+
+axum = { workspace = true, features = ["ws"] }
+bytes = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+clap-verbosity-flag = "3"
+clio = { version = "0.3", features = ["clap-parse"] }
+colored = "3"
+comfy-table = "7"
+crossterm = { workspace = true }
+dirs = { workspace = true }
+futures-util = { workspace = true }
+indicatif = "0.17"
+log = "0.4"
+miette = { version = "7", features = ["fancy"] }
+ratatui = { workspace = true }
+tachyonfx = { workspace = true }
+tempfile = { workspace = true }
+textwrap = { version = "0.16", features = ["terminal_size"] }
+tui-textarea = { workspace = true }
+
+open = { workspace = true }
+ractor = { workspace = true, features = ["async-trait"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+strsim = "0.11"
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal", "sync", "time"] }
+tokio-stream = { workspace = true }
+url = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
