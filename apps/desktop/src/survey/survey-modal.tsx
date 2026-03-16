@@ -165,7 +165,7 @@ export function SurveyModal() {
         return;
       }
 
-      if (countResult.data === 2 && !dismissedResult.data) {
+      if (countResult.data >= 2 && !dismissedResult.data) {
         setOpen(true);
       }
     })();
@@ -195,20 +195,6 @@ export function SurveyModal() {
     [currentQuestion],
   );
 
-  const handleNext = useCallback(() => {
-    if (isLastStep) {
-      void handleSubmit();
-    } else {
-      setStep((s) => s + 1);
-    }
-  }, [isLastStep, step]);
-
-  const handleBack = useCallback(() => {
-    if (step > 0) {
-      setStep((s) => s - 1);
-    }
-  }, [step]);
-
   const handleSubmit = useCallback(async () => {
     const payload: Record<string, unknown> = {
       event: "survey sent",
@@ -237,6 +223,20 @@ export function SurveyModal() {
     void commands.setSurveyDismissed(true);
     setOpen(false);
   }, []);
+
+  const handleNext = useCallback(() => {
+    if (isLastStep) {
+      void handleSubmit();
+    } else {
+      setStep((s) => s + 1);
+    }
+  }, [isLastStep, handleSubmit]);
+
+  const handleBack = useCallback(() => {
+    if (step > 0) {
+      setStep((s) => s - 1);
+    }
+  }, [step]);
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleDismiss()}>
