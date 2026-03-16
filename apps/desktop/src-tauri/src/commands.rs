@@ -181,6 +181,31 @@ pub async fn set_recently_opened_sessions<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn increment_app_open_count<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<u32, String> {
+    app.increment_app_open_count()
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn get_survey_dismissed<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<bool, String> {
+    app.get_survey_dismissed()
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn set_survey_dismissed<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    v: bool,
+) -> Result<(), String> {
+    app.set_survey_dismissed(v)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn list_plugins<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> Result<Vec<PluginManifestEntry>, String> {

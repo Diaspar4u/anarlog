@@ -9,6 +9,7 @@ import {
 import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 
 import * as main from "~/store/tinybase/store/main";
+import { SurveyModal } from "~/survey/survey-modal";
 import {
   createSession,
   getOrCreateSessionForEventId,
@@ -145,5 +146,5 @@ export function EventListeners() {
   useUpdaterEvents();
   useNotificationEvents();
 
-  return null;
+  return <SurveyModal />;
 }

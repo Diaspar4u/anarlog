@@ -17,6 +17,12 @@ pub trait AppExt<R: tauri::Runtime> {
 
     fn get_recently_opened_sessions(&self) -> Result<Option<String>, String>;
     fn set_recently_opened_sessions(&self, v: String) -> Result<(), String>;
+
+    fn get_app_open_count(&self) -> Result<u32, String>;
+    fn increment_app_open_count(&self) -> Result<u32, String>;
+
+    fn get_survey_dismissed(&self) -> Result<bool, String>;
+    fn set_survey_dismissed(&self, v: bool) -> Result<(), String>;
 }
 
 impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
@@ -108,6 +114,45 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
         let store = self.desktop_store()?;
         store
             .set(StoreKey::RecentlyOpenedSessions, v)
+            .map_err(|e| e.to_string())?;
+        store.save().map_err(|e| e.to_string())
+    }
+
+    #[tracing::instrument(skip_all)]
+    fn get_app_open_count(&self) -> Result<u32, String> {
+        let store = self.desktop_store()?;
+        store
+            .get(StoreKey::AppOpenCount)
+            .map(|opt: Option<u32>| opt.unwrap_or(0))
+            .map_err(|e| e.to_string())
+    }
+
+    #[tracing::instrument(skip_all)]
+    fn increment_app_open_count(&self) -> Result<u32, String> {
+        let current = self.get_app_open_count()?;
+        let new_count = current + 1;
+        let store = self.desktop_store()?;
+        store
+            .set(StoreKey::AppOpenCount, new_count)
+            .map_err(|e| e.to_string())?;
+        store.save().map_err(|e| e.to_string())?;
+        Ok(new_count)
+    }
+
+    #[tracing::instrument(skip_all)]
+    fn get_survey_dismissed(&self) -> Result<bool, String> {
+        let store = self.desktop_store()?;
+        store
+            .get(StoreKey::SurveyDismissed)
+            .map(|opt| opt.unwrap_or(false))
+            .map_err(|e| e.to_string())
+    }
+
+    #[tracing::instrument(skip_all)]
+    fn set_survey_dismissed(&self, v: bool) -> Result<(), String> {
+        let store = self.desktop_store()?;
+        store
+            .set(StoreKey::SurveyDismissed, v)
             .map_err(|e| e.to_string())?;
         store.save().map_err(|e| e.to_string())
     }
