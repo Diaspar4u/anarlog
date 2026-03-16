@@ -9,12 +9,12 @@ import {
 import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 
 import * as main from "~/store/tinybase/store/main";
-import { SurveyModal } from "~/survey/survey-modal";
 import {
   createSession,
   getOrCreateSessionForEventId,
 } from "~/store/tinybase/store/sessions";
 import { useTabs } from "~/store/zustand/tabs";
+import { SurveyModal } from "~/survey/survey-modal";
 
 function useUpdaterEvents() {
   const openNew = useTabs((state) => state.openNew);

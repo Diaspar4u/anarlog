@@ -204,7 +204,7 @@ export function SurveyModal() {
     SURVEY_QUESTIONS.forEach((q, i) => {
       const answer = responses[q.id] ?? [];
       const key = i === 0 ? "$survey_response" : `$survey_response_${i}`;
-      payload[key] = q.multiSelect ? answer : answer[0] ?? "";
+      payload[key] = q.multiSelect ? answer : (answer[0] ?? "");
     });
 
     void analyticsCommands.event(
@@ -277,11 +277,7 @@ export function SurveyModal() {
                   Back
                 </Button>
               )}
-              <Button
-                size="sm"
-                onClick={handleNext}
-                disabled={!canProceed}
-              >
+              <Button size="sm" onClick={handleNext} disabled={!canProceed}>
                 {isLastStep ? "Submit" : "Next"}
               </Button>
             </div>
