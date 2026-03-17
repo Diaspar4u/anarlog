@@ -1,14 +1,10 @@
-import { MIN_WORDS_FOR_MEANINGFUL_TRANSCRIPT } from "~/stt/thresholds";
+import type * as main from "~/store/tinybase/store/main";
 
-export const MIN_WORDS_FOR_ENHANCEMENT = MIN_WORDS_FOR_MEANINGFUL_TRANSCRIPT;
-
-type TranscriptWordStore = {
-  getCell: (tableId: "transcripts", rowId: string, cellId: "words") => unknown;
-};
+export const MIN_WORDS_FOR_ENHANCEMENT = 5;
 
 export function countTranscriptWords(
   transcriptIds: string[],
-  store: TranscriptWordStore | undefined,
+  store: main.Store | undefined,
 ): number {
   if (!store) return 0;
 
@@ -35,7 +31,7 @@ type EligibilityResult =
 export function getEligibility(
   hasTranscript: boolean,
   transcriptIds: string[],
-  store: TranscriptWordStore | undefined,
+  store: main.Store | undefined,
 ): EligibilityResult {
   if (!hasTranscript) {
     return { eligible: false, reason: "No transcript recorded", wordCount: 0 };

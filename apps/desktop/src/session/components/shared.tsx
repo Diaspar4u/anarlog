@@ -6,13 +6,15 @@ import { computeCurrentNoteTab } from "./compute-note-tab";
 
 import { useAITaskTask } from "~/ai/hooks";
 import { useNetwork } from "~/contexts/network";
-import { countTranscriptWords } from "~/services/enhancer/eligibility";
+import {
+  MIN_WORDS_FOR_ENHANCEMENT,
+  countTranscriptWords,
+} from "~/services/enhancer/eligibility";
 import * as main from "~/store/tinybase/store/main";
 import { createTaskId } from "~/store/zustand/ai-task/task-configs";
 import type { Tab } from "~/store/zustand/tabs/schema";
 import { type EditorView } from "~/store/zustand/tabs/schema";
 import { useListener } from "~/stt/contexts";
-import { MIN_WORDS_FOR_MEANINGFUL_TRANSCRIPT } from "~/stt/thresholds";
 import { useSTTConnection } from "~/stt/useSTTConnection";
 
 export { computeCurrentNoteTab } from "./compute-note-tab";
@@ -32,7 +34,7 @@ export function useHasTranscript(sessionId: string): boolean {
 
     return (
       countTranscriptWords(transcriptIds, store) >=
-      MIN_WORDS_FOR_MEANINGFUL_TRANSCRIPT
+      MIN_WORDS_FOR_ENHANCEMENT
     );
   }, [store, transcriptIds]);
 }

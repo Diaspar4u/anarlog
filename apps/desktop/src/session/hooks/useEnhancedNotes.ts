@@ -2,12 +2,14 @@ import { useEffect, useMemo } from "react";
 
 import { useAITask } from "~/ai/contexts";
 import { getEnhancerService } from "~/services/enhancer";
-import { countTranscriptWords } from "~/services/enhancer/eligibility";
+import {
+  MIN_WORDS_FOR_ENHANCEMENT,
+  countTranscriptWords,
+} from "~/services/enhancer/eligibility";
 import * as main from "~/store/tinybase/store/main";
 import * as settings from "~/store/tinybase/store/settings";
 import { createTaskId } from "~/store/zustand/ai-task/task-configs";
 import { useListener } from "~/stt/contexts";
-import { MIN_WORDS_FOR_MEANINGFUL_TRANSCRIPT } from "~/stt/thresholds";
 
 export function useEnhancedNotes(sessionId: string) {
   return main.UI.useSliceRowIds(
@@ -68,7 +70,7 @@ export function useEnsureDefaultSummary(sessionId: string) {
     [store, transcriptIds],
   );
   const hasEligibleTranscript =
-    transcriptWordCount >= MIN_WORDS_FOR_MEANINGFUL_TRANSCRIPT;
+    transcriptWordCount >= MIN_WORDS_FOR_ENHANCEMENT;
 
   useEffect(() => {
     if (

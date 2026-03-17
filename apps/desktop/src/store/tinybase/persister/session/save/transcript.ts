@@ -9,7 +9,7 @@ import {
   type TablesContent,
   type WriteOperation,
 } from "~/store/tinybase/persister/shared";
-import { MIN_WORDS_FOR_MEANINGFUL_TRANSCRIPT } from "~/stt/thresholds";
+import { MIN_WORDS_FOR_ENHANCEMENT } from "~/services/enhancer/eligibility";
 
 type BuildContext = {
   tables: TablesContent;
@@ -105,7 +105,7 @@ function buildOperations(
       0,
     );
 
-    if (wordCount < MIN_WORDS_FOR_MEANINGFUL_TRANSCRIPT) {
+    if (wordCount < MIN_WORDS_FOR_ENHANCEMENT) {
       deletePaths.push(path);
       return;
     }
