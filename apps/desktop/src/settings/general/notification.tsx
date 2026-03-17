@@ -35,8 +35,9 @@ import { Switch } from "@hypr/ui/components/ui/switch";
 import { cn } from "@hypr/utils";
 
 import {
-  getEffectiveIgnoredPlatformIds,
-  getMicDetectionAppOptions,
+  getIgnoredBundleIds,
+  getIgnorableApps,
+  toggleIgnoredApp,
 } from "./notification-app-options";
 
 import { useConfigValues } from "~/shared/config";
@@ -62,7 +63,7 @@ export function NotificationSettingsView() {
     };
   }, []);
 
-  const { data: allInstalledApps } = useQuery({
+  const { data: installedApps = [] } = useQuery({
     queryKey: ["settings", "all-installed-applications"],
     queryFn: detectCommands.listInstalledApplications,
     select: (result: Result<InstalledApp[], string>) => {
@@ -73,7 +74,7 @@ export function NotificationSettingsView() {
     },
   });
 
-  const { data: defaultIgnoredBundleIds } = useQuery({
+  const { data: defaultIgnoredBundleIds = [] } = useQuery({
     queryKey: ["settings", "default-ignored-bundle-ids"],
     queryFn: detectCommands.listDefaultIgnoredBundleIds,
     select: (result: Result<string[], string>) => {
@@ -85,11 +86,11 @@ export function NotificationSettingsView() {
   });
 
   const bundleIdToName = (bundleId: string) => {
-    return allInstalledApps?.find((a) => a.id === bundleId)?.name ?? bundleId;
+    return installedApps.find((a) => a.id === bundleId)?.name ?? bundleId;
   };
 
   const isDefaultIgnored = (bundleId: string) => {
-    return defaultIgnoredBundleIds?.includes(bundleId) ?? false;
+    return defaultIgnoredBundleIds.includes(bundleId);
   };
 
   const handleSetNotificationEvent = settings.UI.useSetValueCallback(
@@ -163,15 +164,15 @@ export function NotificationSettingsView() {
   const ignoredPlatforms = form.getFieldValue("ignored_platforms");
   const includedPlatforms = form.getFieldValue("included_platforms");
 
-  const dropdownOptions = getMicDetectionAppOptions({
-    allInstalledApps,
+  const ignorableApps = getIgnorableApps({
+    installedApps,
     ignoredPlatforms,
     includedPlatforms,
     inputValue: searchQuery,
     defaultIgnoredBundleIds,
   });
-  const effectiveIgnoredPlatformIds = getEffectiveIgnoredPlatformIds({
-    installedApps: allInstalledApps,
+  const ignoredBundleIds = getIgnoredBundleIds({
+    installedApps: installedApps,
     ignoredPlatforms,
     includedPlatforms,
     defaultIgnoredBundleIds,
@@ -182,22 +183,18 @@ export function NotificationSettingsView() {
       return;
     }
 
-    const defaultIgnored = isDefaultIgnored(bundleId);
-    const isCurrentlyIgnored =
-      ignoredPlatforms.includes(bundleId) ||
-      (defaultIgnored && !includedPlatforms.includes(bundleId));
+    const {
+      ignoredPlatforms: newIgnoredPlatforms,
+      includedPlatforms: newIncludedPlatforms,
+    } = toggleIgnoredApp({
+      bundleId,
+      ignoredPlatforms,
+      includedPlatforms,
+      defaultIgnoredBundleIds,
+    });
 
-    const nextIgnoredPlatforms = isCurrentlyIgnored
-      ? ignoredPlatforms.filter((appId: string) => appId !== bundleId)
-      : [...ignoredPlatforms, bundleId];
-    const nextIncludedPlatforms = isCurrentlyIgnored
-      ? defaultIgnored && !includedPlatforms.includes(bundleId)
-        ? [...includedPlatforms, bundleId]
-        : includedPlatforms
-      : includedPlatforms.filter((appId: string) => appId !== bundleId);
-
-    form.setFieldValue("ignored_platforms", nextIgnoredPlatforms);
-    form.setFieldValue("included_platforms", nextIncludedPlatforms);
+    form.setFieldValue("ignored_platforms", newIgnoredPlatforms);
+    form.setFieldValue("included_platforms", newIncludedPlatforms);
     void form.handleSubmit();
     setSearchOpen(false);
     setSearchQuery("");
@@ -301,7 +298,7 @@ export function NotificationSettingsView() {
                           }
                         }}
                       >
-                        {effectiveIgnoredPlatformIds.map((bundleId: string) => {
+                        {ignoredBundleIds.map((bundleId: string) => {
                           const isDefault = isDefaultIgnored(bundleId);
                           return (
                             <Badge
@@ -359,7 +356,7 @@ export function NotificationSettingsView() {
                         </CommandEmpty>
                         <CommandList>
                           <CommandGroup className="max-h-[250px] overflow-y-auto">
-                            {dropdownOptions.map((app) => (
+                            {ignorableApps.map((app) => (
                               <CommandItem
                                 key={app.id}
                                 value={`${app.name} ${app.id}`}

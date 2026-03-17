@@ -1,14 +1,14 @@
 import { describe, expect, test } from "vitest";
 
 import {
-  getEffectiveIgnoredPlatformIds,
-  getMicDetectionAppOptions,
+  getIgnoredBundleIds,
+  getIgnorableApps,
 } from "./notification-app-options";
 
-describe("getMicDetectionAppOptions", () => {
+describe("getIgnorableApps", () => {
   test("hides default ignored apps from dropdown matches", () => {
-    const options = getMicDetectionAppOptions({
-      allInstalledApps: [{ id: "com.microsoft.VSCode", name: "VS Code" }],
+    const options = getIgnorableApps({
+      installedApps: [{ id: "com.microsoft.VSCode", name: "VS Code" }],
       ignoredPlatforms: [],
       includedPlatforms: [],
       inputValue: "code",
@@ -19,8 +19,8 @@ describe("getMicDetectionAppOptions", () => {
   });
 
   test("shows explicitly included default apps as excludable again", () => {
-    const options = getMicDetectionAppOptions({
-      allInstalledApps: [{ id: "com.microsoft.VSCode", name: "VS Code" }],
+    const options = getIgnorableApps({
+      installedApps: [{ id: "com.microsoft.VSCode", name: "VS Code" }],
       ignoredPlatforms: [],
       includedPlatforms: ["com.microsoft.VSCode"],
       inputValue: "code",
@@ -31,10 +31,10 @@ describe("getMicDetectionAppOptions", () => {
   });
 });
 
-describe("getEffectiveIgnoredPlatformIds", () => {
+describe("getIgnoredBundleIds", () => {
   test("includes installed default ignored apps unless explicitly included", () => {
     expect(
-      getEffectiveIgnoredPlatformIds({
+      getIgnoredBundleIds({
         installedApps: [
           { id: "com.microsoft.VSCode", name: "VS Code" },
           { id: "us.zoom.xos", name: "Zoom Workplace" },
@@ -46,7 +46,7 @@ describe("getEffectiveIgnoredPlatformIds", () => {
     ).toEqual(["com.microsoft.VSCode"]);
 
     expect(
-      getEffectiveIgnoredPlatformIds({
+      getIgnoredBundleIds({
         installedApps: [{ id: "com.microsoft.VSCode", name: "VS Code" }],
         ignoredPlatforms: [],
         includedPlatforms: ["com.microsoft.VSCode"],
