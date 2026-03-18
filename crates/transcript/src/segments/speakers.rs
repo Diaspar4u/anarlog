@@ -133,8 +133,7 @@ fn apply_identity_rules(
         identity.human_id = Some(human_id.clone());
     }
 
-    if !word.is_final
-        && !(identity.speaker_index.is_some() && identity.human_id.is_some())
+    if !(word.is_final || identity.speaker_index.is_some() && identity.human_id.is_some())
         && let Some(last) = state.last_speaker_by_channel.get(&word.channel)
     {
         if identity.speaker_index.is_none() {
