@@ -48,8 +48,8 @@ where
 
             let convert_count = count.min(vacant);
 
-            for i in 0..convert_count {
-                scratch[i] = data[offset + i].to_sample_();
+            for (i, slot) in scratch.iter_mut().enumerate().take(convert_count) {
+                *slot = data[offset + i].to_sample_();
             }
 
             let pushed = producer.push_slice(&scratch[..convert_count]);
@@ -76,8 +76,8 @@ where
 
         let convert_count = count.min(vacant);
 
-        for i in 0..convert_count {
-            scratch[i] = data[(offset + i) * channels].to_sample_();
+        for (i, slot) in scratch.iter_mut().enumerate().take(convert_count) {
+            *slot = data[(offset + i) * channels].to_sample_();
         }
 
         let pushed = producer.push_slice(&scratch[..convert_count]);
@@ -126,8 +126,8 @@ where
 
         let convert_count = count.min(vacant);
 
-        for i in 0..convert_count {
-            scratch[i] = convert(samples[offset + i]);
+        for (i, slot) in scratch.iter_mut().enumerate().take(convert_count) {
+            *slot = convert(samples[offset + i]);
         }
 
         let pushed = producer.push_slice(&scratch[..convert_count]);
@@ -197,9 +197,9 @@ where
 
         let convert_count = count.min(vacant);
 
-        for i in 0..convert_count {
+        for (i, slot) in scratch.iter_mut().enumerate().take(convert_count) {
             let byte_offset = (offset + i) * frame_size;
-            scratch[i] = f32::from_le_bytes([
+            *slot = f32::from_le_bytes([
                 data[byte_offset],
                 data[byte_offset + 1],
                 data[byte_offset + 2],
