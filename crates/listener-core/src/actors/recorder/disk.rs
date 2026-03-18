@@ -34,6 +34,7 @@ pub(super) fn has_existing_audio(session_dir: &Path) -> bool {
     encoded_path.exists() || wav_path.exists() || ogg_path.exists()
 }
 
+#[allow(dead_code)]
 pub(super) fn infer_existing_audio_channels(
     session_dir: &Path,
 ) -> Result<Option<u16>, ActorProcessingErr> {

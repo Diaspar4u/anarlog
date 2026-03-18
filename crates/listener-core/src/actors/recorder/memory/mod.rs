@@ -10,6 +10,7 @@ use ractor::ActorProcessingErr;
 use super::{RecorderEncoder, disk};
 use retained_audio::{MemoryRetentionPolicy, RetainedAudio};
 
+#[allow(dead_code)]
 const DEFAULT_MEMORY_RETENTION: MemoryRetentionPolicy =
     MemoryRetentionPolicy::KeepLast(Duration::from_secs(60 * 60));
 
@@ -19,10 +20,12 @@ pub(super) struct MemorySink {
     retained: RetainedAudio,
 }
 
+#[allow(dead_code)]
 pub(super) fn create_memory_sink(session_dir: &Path) -> Result<MemorySink, ActorProcessingErr> {
     create_memory_sink_with_retention(session_dir, DEFAULT_MEMORY_RETENTION)
 }
 
+#[allow(dead_code)]
 fn create_memory_sink_with_retention(
     session_dir: &Path,
     retention: MemoryRetentionPolicy,

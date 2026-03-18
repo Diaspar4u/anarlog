@@ -83,12 +83,10 @@ pub(super) async fn relay_client_to_upstreams(
         tokio::select! {
             biased;
             result = shutdown_rx.recv() => {
-                if let Ok(signal) = result {
-                    if let ShutdownSignal::Close { code, reason } = signal {
-                        let close = convert::to_tungstenite_close(code, reason);
-                        let _ = mic_tx.send(close.clone()).await;
-                        let _ = spk_tx.send(close).await;
-                    }
+                if let Ok(signal) = result && let ShutdownSignal::Close { code, reason } = signal {
+                    let close = convert::to_tungstenite_close(code, reason);
+                    let _ = mic_tx.send(close.clone()).await;
+                    let _ = spk_tx.send(close).await;
                 }
                 break;
             },

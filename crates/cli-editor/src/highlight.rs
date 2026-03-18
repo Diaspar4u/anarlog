@@ -218,13 +218,11 @@ impl<S: StyleSheet> Highlighter<S> {
                                 styles[line_idx].push((local_start..local_end, style));
                             }
                             // Record link info if inside a link
-                            if let Some(url) = link_url_stack.last() {
-                                if line_idx < links.len() {
-                                    links[line_idx].push(LinkInfo {
-                                        range: local_start..local_end,
-                                        url: url.clone(),
-                                    });
-                                }
+                            if let Some(url) = link_url_stack.last() && line_idx < links.len() {
+                                links[line_idx].push(LinkInfo {
+                                    range: local_start..local_end,
+                                    url: url.clone(),
+                                });
                             }
                         }
                     }
@@ -244,25 +242,24 @@ impl<S: StyleSheet> Highlighter<S> {
         result: &mut [Vec<(Range<usize>, Style)>],
         lines: &[String],
     ) {
-        if let Some(lang) = lang {
-            if let Some(syntax) = SYNTAX_SET.find_syntax_by_token(lang) {
-                let theme = &THEME_SET.themes["base16-ocean.dark"];
-                let mut h = HighlightLines::new(syntax, theme);
-                for (i, code_line) in LinesWithEndings::from(code).enumerate() {
-                    let line_idx = start_line + i;
-                    if line_idx >= result.len() {
-                        break;
-                    }
-                    if let Ok(ranges) = h.highlight_line(code_line, &SYNTAX_SET) {
-                        let escaped = as_24_bit_terminal_escaped(&ranges, false);
-                        if let Ok(text) = escaped.into_text() {
-                            apply_syntect_line(&text, line_idx, result, lines);
-                        }
+        if let Some(lang) = lang && let Some(syntax) = SYNTAX_SET.find_syntax_by_token(lang) {
+            let theme = &THEME_SET.themes["base16-ocean.dark"];
+            let mut h = HighlightLines::new(syntax, theme);
+            for (i, code_line) in LinesWithEndings::from(code).enumerate() {
+                let line_idx = start_line + i;
+                if line_idx >= result.len() {
+                    break;
+                }
+                if let Ok(ranges) = h.highlight_line(code_line, &SYNTAX_SET) {
+                    let escaped = as_24_bit_terminal_escaped(&ranges, false);
+                    if let Ok(text) = escaped.into_text() {
+                        apply_syntect_line(&text, line_idx, result, lines);
                     }
                 }
-                return;
             }
+            return;
         }
+
         // Fallback: style code block content with code_fence style
         let style = self.styles.code_fence();
         for (i, code_line) in code.lines().enumerate() {

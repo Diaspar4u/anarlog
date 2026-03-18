@@ -33,6 +33,7 @@ enum RecorderSink {
     Disabled,
 }
 
+#[allow(dead_code)]
 enum RecorderEncoder {
     Mono(hypr_mp3::MonoStreamEncoder),
     Stereo(hypr_mp3::StereoStreamEncoder),

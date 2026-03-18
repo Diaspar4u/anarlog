@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub(super) enum MemoryRetentionPolicy {
     KeepLast(Duration),
 }
@@ -20,6 +21,7 @@ pub(super) struct RetainedAudio {
 }
 
 impl RetainedAudio {
+    #[allow(dead_code)]
     pub(super) fn new(retention: MemoryRetentionPolicy) -> Self {
         Self {
             retention,
