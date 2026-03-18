@@ -28,10 +28,10 @@ struct SessionsScreen {
 impl SessionsScreen {
     fn apply_effects(&mut self, effects: Vec<Effect>) -> ScreenControl<Option<String>> {
         for effect in effects {
-            match effect {
-                Effect::Select(id) => return ScreenControl::Exit(Some(id)),
-                Effect::Exit => return ScreenControl::Exit(None),
-            }
+            return match effect {
+                Effect::Select(id) => ScreenControl::Exit(Some(id)),
+                Effect::Exit => ScreenControl::Exit(None),
+            };
         }
         ScreenControl::Continue
     }

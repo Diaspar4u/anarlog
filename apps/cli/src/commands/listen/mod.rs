@@ -55,15 +55,13 @@ impl ListenScreen {
 
     fn apply_effects(&mut self, effects: Vec<Effect>) -> ScreenControl<Output> {
         for effect in effects {
-            match effect {
-                Effect::Exit { force } => {
-                    return ScreenControl::Exit(Output {
-                        elapsed: self.app.elapsed(),
-                        force_quit: force,
-                        segments: self.app.segments(),
-                    });
-                }
-            }
+            return match effect {
+                Effect::Exit { force } => ScreenControl::Exit(Output {
+                    elapsed: self.app.elapsed(),
+                    force_quit: force,
+                    segments: self.app.segments(),
+                }),
+            };
         }
 
         ScreenControl::Continue

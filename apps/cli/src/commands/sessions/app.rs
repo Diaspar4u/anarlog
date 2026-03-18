@@ -74,10 +74,10 @@ impl App {
                 Vec::new()
             }
             KeyCode::Enter => {
-                if let Some(idx) = self.list_state.selected() {
-                    if let Some(session) = self.sessions.get(idx) {
-                        return vec![Effect::Select(session.id.clone())];
-                    }
+                if let Some(idx) = self.list_state.selected()
+                    && let Some(session) = self.sessions.get(idx)
+                {
+                    return vec![Effect::Select(session.id.clone())];
                 }
                 Vec::new()
             }

@@ -2,6 +2,7 @@ use hypr_cli_editor::StyleSheet;
 use ratatui::style::{Color, Modifier, Style};
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 pub struct Theme {
     pub bg: Color,
     pub accent: Style,

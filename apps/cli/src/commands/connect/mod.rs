@@ -28,22 +28,20 @@ struct ConnectScreen {
 impl ConnectScreen {
     fn apply_effects(&mut self, effects: Vec<Effect>) -> ScreenControl<Option<SaveData>> {
         for effect in effects {
-            match effect {
+            return match effect {
                 Effect::Save {
                     connection_type,
                     provider,
                     base_url,
                     api_key,
-                } => {
-                    return ScreenControl::Exit(Some(SaveData {
-                        connection_type,
-                        provider,
-                        base_url,
-                        api_key,
-                    }));
-                }
-                Effect::Exit => return ScreenControl::Exit(None),
-            }
+                } => ScreenControl::Exit(Some(SaveData {
+                    connection_type,
+                    provider,
+                    base_url,
+                    api_key,
+                })),
+                Effect::Exit => ScreenControl::Exit(None),
+            };
         }
         ScreenControl::Continue
     }

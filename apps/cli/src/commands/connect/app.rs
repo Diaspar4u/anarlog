@@ -281,8 +281,9 @@ impl App {
                 }
                 Step::SelectProvider => {
                     if let Some(provider) = self.provider {
-                        let ct = self.connection_type.unwrap();
-                        if provider.valid_for(ct) {
+                        if let Some(ct) = self.connection_type
+                            && provider.valid_for(ct)
+                        {
                             self.step = Step::InputBaseUrl;
                             continue;
                         }
