@@ -7,6 +7,12 @@ pub struct TerminalGuard {
     inline: bool,
 }
 
+impl Default for TerminalGuard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TerminalGuard {
     pub fn new() -> Self {
         install_panic_hook();

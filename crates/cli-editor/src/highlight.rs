@@ -218,7 +218,9 @@ impl<S: StyleSheet> Highlighter<S> {
                                 styles[line_idx].push((local_start..local_end, style));
                             }
                             // Record link info if inside a link
-                            if let Some(url) = link_url_stack.last() && line_idx < links.len() {
+                            if let Some(url) = link_url_stack.last()
+                                && line_idx < links.len()
+                            {
                                 links[line_idx].push(LinkInfo {
                                     range: local_start..local_end,
                                     url: url.clone(),
@@ -242,7 +244,9 @@ impl<S: StyleSheet> Highlighter<S> {
         result: &mut [Vec<(Range<usize>, Style)>],
         lines: &[String],
     ) {
-        if let Some(lang) = lang && let Some(syntax) = SYNTAX_SET.find_syntax_by_token(lang) {
+        if let Some(lang) = lang
+            && let Some(syntax) = SYNTAX_SET.find_syntax_by_token(lang)
+        {
             let theme = &THEME_SET.themes["base16-ocean.dark"];
             let mut h = HighlightLines::new(syntax, theme);
             for (i, code_line) in LinesWithEndings::from(code).enumerate() {
