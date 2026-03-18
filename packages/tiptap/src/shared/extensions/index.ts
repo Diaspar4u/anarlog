@@ -43,6 +43,7 @@ export type FileHandlerConfig = {
 export type ExtensionOptions = {
   imageExtension?: any;
   onLinkOpen?: (url: string) => void;
+  resolveClipboardImageSrc?: (src: string) => Promise<string | null>;
 };
 
 const MarkdownUnderline = Underline.extend({
@@ -277,7 +278,9 @@ export const getExtensions = (
   CustomListKeymap,
   ClearMarksOnEnter,
   StreamingAnimation,
-  ClipboardTextSerializer,
+  ClipboardTextSerializer.configure({
+    resolveImageSrc: options?.resolveClipboardImageSrc,
+  }),
   SearchAndReplace.configure({
     searchResultClass: "search-result",
     disableRegex: true,
