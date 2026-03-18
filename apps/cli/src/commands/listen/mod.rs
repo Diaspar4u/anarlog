@@ -86,7 +86,7 @@ impl Screen for ListenScreen {
                 let effects = self.app.dispatch(Action::Paste(pasted));
                 self.apply_effects(effects)
             }
-            TuiEvent::Draw => ScreenControl::Continue,
+            TuiEvent::Draw | TuiEvent::Resize => ScreenControl::Continue,
         }
     }
 
