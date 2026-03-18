@@ -36,6 +36,7 @@ pub(super) fn build_session_metadata(model_path: &Path) -> Metadata {
     crate::service::build_metadata(model_path)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn build_transcript_response(
     text: &str,
     start: f64,

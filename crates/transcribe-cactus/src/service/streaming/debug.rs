@@ -49,6 +49,7 @@ impl std::fmt::Display for Event<'_> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn log(
     ch: usize,
     audio_offset: f64,

@@ -157,6 +157,7 @@ fn chunk_channel_audio(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn transcribe_chunks(
     channel_idx: usize,
     chunks: &[hypr_vad_chunking::AudioChunk],

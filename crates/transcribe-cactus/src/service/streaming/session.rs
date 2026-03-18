@@ -561,9 +561,8 @@ async fn handle_finalize(
     total_channels: usize,
     metadata: &Metadata,
 ) -> bool {
-    for ch_idx in 0..total_channels {
+    for (ch_idx, state) in channel_states.iter().enumerate().take(total_channels) {
         let (pending_text, pending_confidence, pending_language, segment_start, audio_offset) = {
-            let state = &channel_states[ch_idx];
             (
                 state.pending_text.trim().to_string(),
                 state.pending_confidence,
