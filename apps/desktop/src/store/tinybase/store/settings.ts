@@ -42,6 +42,11 @@ export const SETTINGS_MAPPING = {
       path: ["general", "auto_start_scheduled_meetings"],
       default: true as boolean,
     },
+    only_meetings_with_link: {
+      type: "boolean",
+      path: ["general", "only_meetings_with_link"],
+      default: false as boolean,
+    },
     floating_bar_enabled: {
       type: "boolean",
       path: ["general", "floating_bar_enabled"],

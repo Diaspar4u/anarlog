@@ -21,6 +21,10 @@ export function checkEventNotifications(
     return;
   }
 
+  const onlyMeetingsWithLink = settingsStore?.getValue(
+    "only_meetings_with_link",
+  );
+
   const now = Date.now();
 
   for (const [key, timestamp] of notifiedEvents) {
@@ -57,6 +61,7 @@ export function checkEventNotifications(
   store.forEachRow("events", (eventId, _forEachCell) => {
     const event = store.getRow("events", eventId);
     if (!event?.started_at) return;
+    if (onlyMeetingsWithLink && !event.meeting_link) return;
 
     const startTime = new Date(String(event.started_at));
     const timeUntilStart = startTime.getTime() - now;

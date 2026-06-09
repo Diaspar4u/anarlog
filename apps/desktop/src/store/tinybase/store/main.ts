@@ -85,6 +85,7 @@ export const StoreComponent = () => {
           select("has_recurrence_rules");
           select("recurrence_series_id");
           select("is_all_day");
+          select("meeting_link");
         })
         .setQueryDefinition(
           QUERIES.timelineSessions,
@@ -366,6 +367,7 @@ interface _QueryResultRows {
     has_recurrence_rules: boolean;
     recurrence_series_id: string;
     is_all_day: boolean;
+    meeting_link: string;
   };
   timelineSessions: {
     title: string;

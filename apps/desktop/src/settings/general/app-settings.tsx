@@ -12,6 +12,7 @@ interface AppSettingsViewProps {
   autostart: SettingItem;
   autoStartScheduledMeetings: SettingItem;
   autoStopMeetings: SettingItem;
+  onlyMeetingsWithLink: SettingItem;
   floatingBar: SettingItem;
   sidebarTimeline: SettingItem;
   telemetryConsent: SettingItem;
@@ -21,6 +22,7 @@ export function AppSettingsView({
   autostart,
   autoStartScheduledMeetings,
   autoStopMeetings,
+  onlyMeetingsWithLink,
   floatingBar,
   sidebarTimeline,
   telemetryConsent,
@@ -86,6 +88,17 @@ export function AppSettingsView({
             }
             checked={autoStopMeetings.value}
             onChange={autoStopMeetings.onChange}
+          />
+          <SettingRow
+            title={<Trans>Only show meetings with a call link</Trans>}
+            description={
+              <Trans>
+                Hide calendar events that do not have a video or phone call
+                link.
+              </Trans>
+            }
+            checked={onlyMeetingsWithLink.value}
+            onChange={onlyMeetingsWithLink.onChange}
           />
           <SettingRow
             title={<Trans>Show floating bar</Trans>}

@@ -274,6 +274,7 @@ export const generalSchema = z.object({
   autostart: z.boolean().default(false),
   auto_stop_meetings: z.boolean().default(true),
   auto_start_scheduled_meetings: z.boolean().default(true),
+  only_meetings_with_link: z.boolean().default(false),
   floating_bar_enabled: z.boolean().default(true),
   sidebar_timeline_enabled: z.boolean().default(false),
   telemetry_consent: z.boolean().default(true),

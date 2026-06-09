@@ -116,6 +116,7 @@ function compareNullableDates(a: string | undefined, b: string | undefined) {
 
 export function useCalendarData(): CalendarData {
   const tz = useTimezone();
+  const onlyMeetingsWithLink = useConfigValue("only_meetings_with_link");
 
   const eventsTable = main.UI.useResultTable(
     main.QUERIES.timelineEvents,
@@ -134,6 +135,7 @@ export function useCalendarData(): CalendarData {
     if (eventsTable) {
       for (const [eventId, row] of Object.entries(eventsTable)) {
         if (!row.title) continue;
+        if (onlyMeetingsWithLink && !row.meeting_link) continue;
         const raw = safeParseDate(row.started_at);
         if (!raw) continue;
         if (isIgnored(row.tracking_id_event, row.recurrence_series_id))
@@ -193,5 +195,5 @@ export function useCalendarData(): CalendarData {
     }
 
     return { eventIdsByDate, sessionIdsByDate };
-  }, [eventsTable, sessionsTable, tz, isIgnored]);
+  }, [eventsTable, sessionsTable, tz, isIgnored, onlyMeetingsWithLink]);
 }
