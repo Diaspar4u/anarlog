@@ -243,7 +243,7 @@ describe("BillingProvider", () => {
     vi.unstubAllGlobals();
   });
 
-  it("opens the trial-ended modal after a failed eligibility refresh", async () => {
+  it("keeps trial billing dialogs hidden after eligibility refresh", async () => {
     refreshSession.mockResolvedValue(null);
 
     renderBillingProvider();
@@ -252,11 +252,9 @@ describe("BillingProvider", () => {
       expect(refreshSession).toHaveBeenCalledTimes(1);
     });
 
-    await waitFor(() => {
-      expect(
-        screen.getByTestId("trial-ended-dialog").getAttribute("data-open"),
-      ).toBe("true");
-    });
+    expect(screen.queryByTestId("trial-ended-dialog")).toBeNull();
+    expect(screen.queryByTestId("trial-started-dialog")).toBeNull();
+    expect(screen.queryByTestId("trial-payment-reminder-dialog")).toBeNull();
   });
 
   it("keeps paid access while the same user's refreshed token is decoded", async () => {
@@ -410,7 +408,7 @@ describe("BillingProvider", () => {
     switchedClaims.resolve(paidClaims("user-2"));
   });
 
-  it("opens a payment reminder during the final seven trial days", async () => {
+  it("keeps payment reminders hidden during the final seven trial days", async () => {
     vi.mocked(localStorage.getItem).mockImplementation((key: string) =>
       key.startsWith("anarlog:trial_started_seen:") ? "1" : null,
     );
@@ -428,14 +426,11 @@ describe("BillingProvider", () => {
 
     renderBillingProvider();
 
-    await waitFor(() => {
-      const reminder = screen.getByTestId("trial-payment-reminder-dialog");
-      expect(reminder.getAttribute("data-open")).toBe("true");
-      expect(reminder.getAttribute("data-days-remaining")).toBe("6");
-    });
+    await waitFor(() => expect(authCommands.decodeClaims).toHaveBeenCalled());
+    expect(screen.queryByTestId("trial-payment-reminder-dialog")).toBeNull();
   });
 
-  it("does not remind trial users who already added a payment method", async () => {
+  it("keeps payment reminders hidden after a payment method is added", async () => {
     vi.mocked(localStorage.getItem).mockImplementation((key: string) =>
       key.startsWith("anarlog:trial_started_seen:") ? "1" : null,
     );
@@ -453,13 +448,8 @@ describe("BillingProvider", () => {
 
     renderBillingProvider();
 
-    await waitFor(() => {
-      expect(
-        screen
-          .getByTestId("trial-payment-reminder-dialog")
-          .getAttribute("data-open"),
-      ).toBe("false");
-    });
+    await waitFor(() => expect(authCommands.decodeClaims).toHaveBeenCalled());
+    expect(screen.queryByTestId("trial-payment-reminder-dialog")).toBeNull();
   });
 
   it.each(["windows", "linux"])(

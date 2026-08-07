@@ -81,7 +81,7 @@ pub async fn main() {
         };
 
     let sentry_client = {
-        let dsn = option_env!("SENTRY_DSN");
+        let dsn = None::<&str>;
 
         if let Some(dsn) = dsn {
             let release =

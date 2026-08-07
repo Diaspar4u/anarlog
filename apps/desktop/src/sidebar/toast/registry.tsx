@@ -93,7 +93,7 @@ export function createToastRegistry({
         dismissible: true,
         loading: true,
       },
-      condition: () => cloudsyncInitialSyncToastId !== null,
+      condition: () => false,
     },
     ...(updateToast
       ? [
@@ -150,7 +150,7 @@ export function createToastRegistry({
         },
         dismissible: true,
       },
-      condition: () => !isAuthLoading && !isAuthenticated,
+      condition: () => false,
     },
     {
       toast: {
@@ -189,14 +189,7 @@ export function createToastRegistry({
         },
         dismissible: true,
       },
-      // suppress until auth resolves to avoid flash on startup
-      condition: () =>
-        !isAuthLoading &&
-        !isAuthenticated &&
-        hasLLMConfigured &&
-        hasSttConfigured &&
-        !hasProSttConfigured &&
-        !hasProLlmConfigured,
+      condition: () => false,
     },
   ];
 }

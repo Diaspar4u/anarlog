@@ -1,7 +1,6 @@
 import { cn } from "@anlg/utils";
 
 import {
-  SettingsAccount,
   SettingsApp,
   SettingsAudio,
   SettingsMeetings,
@@ -16,7 +15,6 @@ import { SettingsAppearance } from "~/settings/appearance";
 import { SettingsDevelopers } from "~/settings/developers";
 import { SettingsDictionary } from "~/settings/dictionary";
 import { SettingsHydrationBoundary } from "~/settings/hydration-boundary";
-import { SettingsSync } from "~/settings/sync";
 import { StandardContentWrapper } from "~/shared/main";
 import { type Tab } from "~/store/zustand/tabs";
 
@@ -45,8 +43,6 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
 
   const renderContent = () => {
     switch (activeTab) {
-      case "account":
-        return <SettingsAccount />;
       case "app":
         return <SettingsApp />;
       case "meetings":
@@ -57,8 +53,6 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
         return <SettingsAppearance />;
       case "notifications":
         return <SettingsNotifications />;
-      case "sync":
-        return <SettingsSync />;
       case "permissions":
         return <SettingsPermissions />;
       case "developers":

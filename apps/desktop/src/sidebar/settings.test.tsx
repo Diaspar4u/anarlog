@@ -115,8 +115,6 @@ describe("SettingsNav", () => {
       "App",
       "General",
       "Appearance",
-      "Account",
-      "Sync",
       "Notifications",
       "Recording",
       "Meetings",
@@ -130,6 +128,10 @@ describe("SettingsNav", () => {
       "Developers",
     ].forEach((label) => {
       expect(screen.getByText(label)).toBeTruthy();
+    });
+
+    ["Account", "Sync"].forEach((label) => {
+      expect(screen.queryByText(label)).toBeNull();
     });
 
     ["Automations", "Calendar", "Contacts", "Templates"].forEach((label) => {
@@ -203,17 +205,6 @@ describe("SettingsNav", () => {
     expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
       mocks.currentTab,
       { tab: "dictionary" },
-    );
-  });
-
-  it("opens Sync inside settings", () => {
-    render(<SettingsNav />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Sync" }));
-
-    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
-      mocks.currentTab,
-      { tab: "sync" },
     );
   });
 

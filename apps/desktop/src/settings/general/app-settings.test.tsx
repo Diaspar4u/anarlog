@@ -26,7 +26,6 @@ function renderAppSettings({ automaticUpdates = setting() } = {}) {
         automaticUpdates={automaticUpdates}
         showAppInDock={setting()}
         showTrayIcon={setting()}
-        telemetryConsent={setting()}
       />,
     ),
     automaticUpdates,
@@ -77,5 +76,13 @@ describe("AppSettingsView", () => {
     renderAppSettings();
 
     expect(screen.queryByRole("switch", { name: "Cloud sync" })).toBeNull();
+  });
+
+  it("does not expose telemetry controls", () => {
+    renderAppSettings();
+
+    expect(
+      screen.queryByRole("switch", { name: "Share anonymous usage data" }),
+    ).toBeNull();
   });
 });

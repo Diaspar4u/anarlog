@@ -41,6 +41,7 @@ describe("checkEventNotifications", () => {
         started_at: "2026-05-15T12:02:00.000Z",
         tracking_id_event: "tracking-1",
         recurrence_series_id: "",
+        meeting_link: "https://meet.example.com/design-review",
         title: "Design Review",
       },
     ]);
@@ -57,6 +58,23 @@ describe("checkEventNotifications", () => {
         footer: null,
       }),
     );
+  });
+
+  test("does not notify for calendar events without a meeting link", async () => {
+    mocks.execute.mockResolvedValueOnce([
+      {
+        id: "event-1",
+        started_at: "2026-05-15T12:02:00.000Z",
+        tracking_id_event: "tracking-1",
+        recurrence_series_id: "",
+        meeting_link: "",
+        title: "Focus time",
+      },
+    ]);
+
+    await checkEventNotifications(true, new Map());
+
+    expect(mocks.showNotification).not.toHaveBeenCalled();
   });
 
   test("does not query or notify when event notifications are disabled", async () => {
@@ -77,6 +95,7 @@ describe("checkEventNotifications", () => {
         started_at: "2026-05-15T12:02:00.000Z",
         tracking_id_event: "tracking-1",
         recurrence_series_id: "",
+        meeting_link: "https://meet.example.com/design-review",
         title: "Design Review",
       },
     ]);

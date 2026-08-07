@@ -1,6 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
-  ArrowsClockwise,
   Bell,
   BookOpen,
   Code,
@@ -11,7 +10,6 @@ import {
   Microphone,
   Sparkle,
   Sun,
-  User,
   VideoCamera,
   Waveform,
   X,
@@ -54,8 +52,6 @@ export function SettingsNav() {
       items: [
         { id: "app", label: t`General`, icon: Gear },
         { id: "appearance", label: t`Appearance`, icon: Sun },
-        { id: "account", label: t`Account`, icon: User },
-        { id: "sync", label: t`Sync`, icon: ArrowsClockwise },
         { id: "notifications", label: t`Notifications`, icon: Bell },
       ],
     },

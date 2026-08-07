@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   addIntegration: vi.fn(),
+  init: vi.fn(),
   emit: vi.fn(),
   getClient: vi.fn(),
   isDisabled: vi.fn(),
@@ -16,7 +17,7 @@ vi.mock("@sentry/react", () => ({
   addIntegration: mocks.addIntegration,
   captureException: vi.fn(),
   getClient: mocks.getClient,
-  init: vi.fn(),
+  init: mocks.init,
   replayIntegration: mocks.replayIntegration,
   setUser: vi.fn(),
   withScope: vi.fn(),
@@ -120,6 +121,17 @@ describe("normalizeOperationalError", () => {
   });
 });
 
+describe("error reporting initialization", () => {
+  it("keeps Sentry disabled for the local fork", async () => {
+    vi.resetModules();
+    const { initializeErrorReporting } = await import("./error-reporting");
+
+    initializeErrorReporting();
+
+    expect(mocks.init).not.toHaveBeenCalled();
+  });
+});
+
 describe("sanitizeErrorEvent", () => {
   it("keeps diagnostics while removing user and request data", () => {
     const event = sanitizeErrorEvent({
@@ -209,52 +221,16 @@ describe("sanitizeErrorEvent", () => {
 });
 
 describe("session replay consent", () => {
-  it("broadcasts revocation and stops the local replay", async () => {
+  it("never attaches replay and still broadcasts revocation", async () => {
     vi.resetModules();
     const { disableSessionReplay, initializeErrorReporting } =
       await import("./error-reporting");
 
     initializeErrorReporting();
-    await vi.waitFor(() => expect(mocks.addIntegration).toHaveBeenCalledOnce());
-
     disableSessionReplay();
 
-    expect(mocks.stopReplay).toHaveBeenCalledWith({
-      forceFlush: false,
-      reason: "consent_revoked",
-    });
+    expect(mocks.addIntegration).not.toHaveBeenCalled();
     expect(mocks.publicStopReplay).not.toHaveBeenCalled();
     expect(mocks.emit).toHaveBeenCalledWith("anlg:session-replay-disabled");
-  });
-
-  it("stops replay when another webview revokes consent", async () => {
-    vi.resetModules();
-    const { initializeErrorReporting } = await import("./error-reporting");
-
-    initializeErrorReporting();
-    await vi.waitFor(() => expect(mocks.addIntegration).toHaveBeenCalledOnce());
-
-    mocks.listener?.();
-
-    expect(mocks.stopReplay).toHaveBeenCalledOnce();
-  });
-
-  it("does not attach replay when revocation races with consent loading", async () => {
-    vi.resetModules();
-    let resolveConsent!: (value: { status: "ok"; data: boolean }) => void;
-    mocks.isDisabled.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveConsent = resolve;
-      }),
-    );
-    const { initializeErrorReporting } = await import("./error-reporting");
-
-    initializeErrorReporting();
-    await vi.waitFor(() => expect(mocks.isDisabled).toHaveBeenCalledOnce());
-    mocks.listener?.();
-    resolveConsent({ status: "ok", data: false });
-
-    await Promise.resolve();
-    expect(mocks.addIntegration).not.toHaveBeenCalled();
   });
 });

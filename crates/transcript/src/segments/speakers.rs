@@ -133,7 +133,6 @@ fn apply_identity_rules(
     }
 
     if identity.human_id.is_none()
-        && state.complete_channels.contains(&word.channel)
         && let Some(human_id) = state.human_id_by_channel.get(&word.channel)
     {
         identity.human_id = Some(human_id.clone());

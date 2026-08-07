@@ -187,6 +187,21 @@ describe("SQLite settings", () => {
     );
   });
 
+  it("does not let stored consent enable local-fork telemetry", async () => {
+    await setSettingValues({ telemetry_consent: true });
+
+    expect(mocks.setDisabled).toHaveBeenCalledWith(true);
+    await vi.waitFor(() =>
+      expect(mocks.disableSessionReplay).toHaveBeenCalledOnce(),
+    );
+  });
+
+  it("disables telemetry while application settings initialize", async () => {
+    await initializeApplicationSettings();
+
+    expect(mocks.setDisabled).toHaveBeenCalledWith(true);
+  });
+
   it("migrates and persists the consent chat auto-send setting", async () => {
     const imported = parseSettingRows([
       {

@@ -624,16 +624,12 @@ describe("ClassicMainBody", () => {
     expect(mocks.tabContentRenderCount).toBe(initialRenderCount);
   });
 
-  it("keeps the note filter beside the new note button", () => {
+  it("keeps the cloud note filter hidden", () => {
     render(<ClassicMainBody />);
 
     const newNoteButton = screen.getByRole("button", { name: "New note" });
-    const filterButton = screen.getByRole("button", { name: "Filter notes" });
-
-    expect(filterButton.parentElement).toBe(newNoteButton.parentElement);
-    expect(newNoteButton.compareDocumentPosition(filterButton)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
+    expect(newNoteButton).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Filter notes" })).toBeNull();
   });
 
   it("keeps near-equal sidebar size commits in sync with drag-time CSS variables", () => {

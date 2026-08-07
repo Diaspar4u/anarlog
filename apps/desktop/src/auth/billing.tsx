@@ -51,6 +51,7 @@ const TRIAL_STARTED_SEEN_PREFIX = "anarlog:trial_started_seen:";
 const TRIAL_ENDED_SEEN_PREFIX = "anarlog:trial_ended_seen:";
 const TRIAL_PAYMENT_REMINDER_SEEN_PREFIX =
   "anarlog:trial_payment_reminder_seen:";
+const SHOW_HOSTED_BILLING_DIALOGS = false;
 
 function readSeen(key: string): boolean {
   try {
@@ -360,30 +361,34 @@ export function BillingProvider({ children }: { children: ReactNode }) {
   return (
     <BillingContext.Provider value={value}>
       {children}
-      <TrialStartedDialog
-        open={trialStartedOpen}
-        onOpenChange={setTrialStartedOpen}
-        trialDaysRemaining={billing.trialDaysRemaining}
-        hasPaymentMethod={billing.hasPaymentMethod}
-      />
-      <TrialPaymentReminderDialog
-        open={trialPaymentReminderOpen}
-        onOpenChange={setTrialPaymentReminderOpen}
-        daysRemaining={billing.trialDaysRemaining ?? 0}
-        onAddPaymentMethod={() => {
-          void analyticsCommands.event({
-            event: "trial_payment_method_clicked",
-            days_remaining: billing.trialDaysRemaining,
-            reminder_threshold: trialPaymentReminderThreshold,
-          });
-          void openBillingPortal("payment_method_update");
-        }}
-      />
-      <TrialEndedDialog
-        open={trialEndedOpen}
-        onOpenChange={setTrialEndedOpen}
-        onUpgrade={() => void openUpgrade("trial_ended")}
-      />
+      {SHOW_HOSTED_BILLING_DIALOGS ? (
+        <>
+          <TrialStartedDialog
+            open={trialStartedOpen}
+            onOpenChange={setTrialStartedOpen}
+            trialDaysRemaining={billing.trialDaysRemaining}
+            hasPaymentMethod={billing.hasPaymentMethod}
+          />
+          <TrialPaymentReminderDialog
+            open={trialPaymentReminderOpen}
+            onOpenChange={setTrialPaymentReminderOpen}
+            daysRemaining={billing.trialDaysRemaining ?? 0}
+            onAddPaymentMethod={() => {
+              void analyticsCommands.event({
+                event: "trial_payment_method_clicked",
+                days_remaining: billing.trialDaysRemaining,
+                reminder_threshold: trialPaymentReminderThreshold,
+              });
+              void openBillingPortal("payment_method_update");
+            }}
+          />
+          <TrialEndedDialog
+            open={trialEndedOpen}
+            onOpenChange={setTrialEndedOpen}
+            onUpgrade={() => void openUpgrade("trial_ended")}
+          />
+        </>
+      ) : null}
     </BillingContext.Provider>
   );
 }

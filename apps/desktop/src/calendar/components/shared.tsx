@@ -53,4 +53,8 @@ const _PROVIDERS = [
   },
 ] as const satisfies readonly CalendarProvider[];
 
-export const PROVIDERS = [..._PROVIDERS];
+const HOSTED_PROVIDER_IDS = new Set(["google", "outlook"]);
+export const LOCAL_PROVIDERS = _PROVIDERS.filter(
+  (provider) => !HOSTED_PROVIDER_IDS.has(provider.id),
+);
+export const PROVIDERS = [...LOCAL_PROVIDERS];

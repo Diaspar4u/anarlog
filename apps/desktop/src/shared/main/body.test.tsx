@@ -423,25 +423,23 @@ describe("ClassicMainBody", () => {
     },
   );
 
-  it("shows the note filter beside the new note button", () => {
+  it("keeps the cloud note filter hidden", () => {
     render(<ClassicMainBody />);
 
     const sidebarToggle = screen.getByRole("button", { name: "Hide sidebar" });
     const searchButton = screen.getByRole("button", { name: "Search" });
     const newNoteButton = screen.getByRole("button", { name: "New note" });
-    const filterButton = screen.getByRole("button", { name: "Filter notes" });
+    const filterButton = screen.queryByRole("button", {
+      name: "Filter notes",
+    });
     const chrome = sidebarToggle.parentElement?.parentElement;
     const chromeFrame = chrome?.parentElement;
     const timelineHeader = document.querySelector<HTMLElement>(
       "[data-sidebar-timeline-header]",
     );
 
-    expect(filterButton).toBeTruthy();
-    expect(filterButton.parentElement).toBe(sidebarToggle.parentElement);
+    expect(filterButton).toBeNull();
     expect(searchButton.compareDocumentPosition(newNoteButton)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
-    expect(newNoteButton.compareDocumentPosition(filterButton)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
     expect(searchButton.parentElement).toBe(sidebarToggle.parentElement);
