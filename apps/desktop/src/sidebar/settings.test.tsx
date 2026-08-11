@@ -121,20 +121,17 @@ describe("SettingsNav", () => {
       "App",
       "General",
       "Appearance",
-      "Account",
       "Notifications",
       "Workspace",
       "Meetings",
       "Calendar",
       "Contacts",
       "Templates",
-      "Automations",
       "AI",
       "Transcription",
       "Intelligence",
       "Dictionary",
       "Data",
-      "Sync",
       "Imports",
       "Advanced",
       "Permissions",
@@ -148,7 +145,6 @@ describe("SettingsNav", () => {
     ["Calendar", { type: "calendar" }],
     ["Contacts", { type: "contacts" }],
     ["Templates", { type: "templates" }],
-    ["Automations", { type: "automations" }],
   ] as const)("opens the %s workspace", (label, destination) => {
     render(<SettingsNav />);
 
@@ -229,23 +225,12 @@ describe("SettingsNav", () => {
     );
   });
 
-  it("opens Sync inside settings", () => {
+  it("keeps account and sync settings hidden", () => {
     render(<SettingsNav />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Sync" }));
-
-    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
-      mocks.currentTab,
-      { tab: "sync" },
-    );
-  });
-
-  it("hides Sync when the user is not signed in", () => {
-    mocks.session = null;
-
-    render(<SettingsNav />);
-
+    expect(screen.queryByText("Account")).toBeNull();
     expect(screen.queryByText("Sync")).toBeNull();
+    expect(screen.queryByText("Automations")).toBeNull();
     expect(screen.getByText("Imports")).toBeTruthy();
   });
 
@@ -279,7 +264,7 @@ describe("SettingsNav", () => {
       target: { value: "workspace" },
     });
 
-    ["Meetings", "Calendar", "Contacts", "Templates", "Automations"].forEach(
+    ["Meetings", "Calendar", "Contacts", "Templates"].forEach(
       (label) => {
         expect(screen.getByText(label)).toBeTruthy();
       },

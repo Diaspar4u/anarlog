@@ -231,11 +231,6 @@ function SettingsSectionContent({
                   onChange: (value) =>
                     form.setFieldValue("show_tray_icon", value),
                 }}
-                telemetryConsent={{
-                  value: values.telemetry_consent,
-                  onChange: (value) =>
-                    form.setFieldValue("telemetry_consent", value),
-                }}
               />
             )}
           </form.Subscribe>

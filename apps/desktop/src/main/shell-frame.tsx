@@ -2,7 +2,6 @@ import { memo } from "react";
 
 import { ClassicMainBody } from "./body";
 import { resolveMainSurfaceChrome } from "./main-surface-chrome";
-import { SyncStatusIndicator } from "./sync-status";
 
 import { useShell } from "~/contexts/shell";
 import { MainShellBodyFrame, MainShellScaffold } from "~/shared/main";
@@ -19,8 +18,6 @@ export function ClassicMainShellFrame() {
 
   const isOnboarding = currentTab?.type === "onboarding";
   const isChangelog = currentTab?.type === "changelog";
-  const showSyncStatus =
-    currentTab?.type === "empty" || currentTab?.type === "sessions";
   const hasCustomSidebar = hasCustomSidebarTab(currentTab);
   const hasLeftSurfaceCustomSidebar =
     hasLeftSurfaceCustomSidebarTab(currentTab);
@@ -40,7 +37,6 @@ export function ClassicMainShellFrame() {
       mainSurfaceChrome={isOnboarding ? undefined : mainSurfaceChrome}
     >
       <ClassicMainBodyHost />
-      {showSyncStatus && <SyncStatusIndicator />}
       <ToastNotifications />
     </MainShellScaffold>
   );

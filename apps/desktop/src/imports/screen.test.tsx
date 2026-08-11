@@ -79,7 +79,7 @@ function renderImports() {
 describe("MeetingImportScreen", () => {
   afterEach(cleanup);
 
-  it("shows direct connections plus detected file sources with native icons", async () => {
+  it("shows detected file sources with native icons", async () => {
     mocks.detectImportSources.mockResolvedValue(
       MEETING_IMPORT_PROVIDERS.filter((provider) =>
         [
@@ -110,17 +110,15 @@ describe("MeetingImportScreen", () => {
     expect(screen.queryByText("OAuth")).toBeNull();
     expect(screen.queryByText("Export help")).toBeNull();
     expect(
-      screen.getAllByRole("button", { name: "Connect & import" }),
-    ).toHaveLength(8);
-    expect(screen.getAllByRole("button", { name: "Use files" })).toHaveLength(
-      8,
-    );
+      screen.queryByRole("button", { name: "Connect & import" }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Use files" })).toBeNull();
     expect(
       screen.getAllByRole("button", { name: "Choose files" }),
-    ).toHaveLength(3);
+    ).toHaveLength(5);
     expect(
-      screen.getAllByText(/keep new meetings coming in while you switch/i),
-    ).toHaveLength(8);
+      screen.getAllByText(/keep new meetings coming into Anarlog/i),
+    ).toHaveLength(1);
     expect(
       container.querySelectorAll('img[src^="data:image/png;base64,"]'),
     ).toHaveLength(5);

@@ -15,7 +15,6 @@ function provider(id: string) {
 describe("LLM providers", () => {
   test("orders providers by popularity", () => {
     expect(PROVIDERS.map(({ id }) => id)).toEqual([
-      "anarlog",
       "openai",
       "anthropic",
       "google_generative_ai",

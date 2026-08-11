@@ -13,21 +13,10 @@ describe("meeting import providers", () => {
     ).toBe(MEETING_IMPORT_PROVIDERS.length);
   });
 
-  it("enables direct OAuth imports for every provider with a public MCP server", () => {
+  it("keeps hosted OAuth imports hidden in the local fork", () => {
     expect(
-      MEETING_IMPORT_PROVIDERS.filter((provider) => provider.directImport).map(
-        (provider) => provider.id,
-      ),
-    ).toEqual([
-      "granola",
-      "circleback",
-      "fireflies",
-      "krisp",
-      "read-ai",
-      "fellow",
-      "tactiq",
-      "jiminny",
-    ]);
+      MEETING_IMPORT_PROVIDERS.filter((provider) => provider.directImport),
+    ).toEqual([]);
   });
 
   it("detects exact native names and bundle identifiers", () => {

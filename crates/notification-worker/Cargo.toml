@@ -21,3 +21,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 
 tauri-specta = { workspace = true, features = ["derive", "typescript"], optional = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt"] }

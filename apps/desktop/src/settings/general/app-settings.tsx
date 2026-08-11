@@ -14,7 +14,6 @@ interface AppSettingsViewProps {
   automaticUpdates: SettingItem;
   showAppInDock: SettingItem;
   showTrayIcon: SettingItem;
-  telemetryConsent: SettingItem;
 }
 
 export function AppSettingsView({
@@ -22,7 +21,6 @@ export function AppSettingsView({
   automaticUpdates,
   showAppInDock,
   showTrayIcon,
-  telemetryConsent,
 }: AppSettingsViewProps) {
   const currentPlatform = platform();
   const isMacos = currentPlatform === "macos";
@@ -66,22 +64,6 @@ export function AppSettingsView({
             }
             checked={showTrayIcon.value}
             onChange={showTrayIcon.onChange}
-          />
-        </div>
-      </section>
-
-      <section>
-        <h2 className="mb-4 font-sans text-lg font-semibold">
-          <Trans>Privacy</Trans>
-        </h2>
-        <div className="flex flex-col gap-4">
-          <SettingSwitchRow
-            title={<Trans>Share usage data</Trans>}
-            description={
-              <Trans>Help improve Anarlog with anonymous usage data.</Trans>
-            }
-            checked={telemetryConsent.value}
-            onChange={telemetryConsent.onChange}
           />
         </div>
       </section>

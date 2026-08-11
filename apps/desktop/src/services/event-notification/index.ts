@@ -17,6 +17,7 @@ type NotificationEventRow = {
   started_at: string;
   tracking_id_event: string;
   recurrence_series_id: string;
+  meeting_link: string;
 };
 
 export async function checkEventNotifications(
@@ -38,7 +39,8 @@ export async function checkEventNotifications(
         title,
         started_at,
         tracking_id_event,
-        recurrence_series_id
+        recurrence_series_id,
+        meeting_link
       FROM events
       WHERE deleted_at IS NULL AND started_at <> ''
       ORDER BY started_at, id
@@ -46,6 +48,10 @@ export async function checkEventNotifications(
   ]);
 
   for (const event of events) {
+    if (!event.meeting_link.trim()) {
+      continue;
+    }
+
     const startTime = new Date(event.started_at);
     const timeUntilStart = startTime.getTime() - now;
     const notificationKey = `event-${event.id}-${startTime.getTime()}`;

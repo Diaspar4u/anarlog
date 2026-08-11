@@ -1,7 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
   ArrowUpRight,
-  ArrowsClockwise,
   Bell,
   BookOpen,
   CalendarDots,
@@ -9,13 +8,11 @@ import {
   DownloadSimple,
   FileText,
   Gear,
-  Lightning,
   type Icon,
   Lock,
   MagnifyingGlass,
   Sparkle,
   Sun,
-  User,
   Users,
   VideoCamera,
   X,
@@ -26,13 +23,12 @@ import { cn } from "@anlg/utils";
 
 import { CustomSidebarHeader } from "./custom-sidebar-header";
 
-import { useAuth } from "~/auth";
 import { type SettingsTab, type TabInput, useTabs } from "~/store/zustand/tabs";
 
 type SettingsNavItem =
   | { id: SettingsTab; label: string; icon: Icon }
   | {
-      id: "automations" | "calendar" | "contacts" | "templates";
+      id: "calendar" | "contacts" | "templates";
       label: string;
       icon: Icon;
       destination: TabInput;
@@ -42,7 +38,6 @@ type SettingsNavGroup = { label: string; items: SettingsNavItem[] };
 
 export function SettingsNav() {
   const { t } = useLingui();
-  const signedIn = Boolean(useAuth().session);
   const [search, setSearch] = useState("");
   const currentTab = useTabs((state) => state.currentTab);
   const updateSettingsTabState = useTabs(
@@ -68,7 +63,6 @@ export function SettingsNav() {
       label: t`App`,
       items: [
         { id: "app", label: t`General`, icon: Gear },
-        { id: "account", label: t`Account`, icon: User },
         { id: "appearance", label: t`Appearance`, icon: Sun },
         { id: "notifications", label: t`Notifications`, icon: Bell },
       ],
@@ -95,12 +89,6 @@ export function SettingsNav() {
           icon: FileText,
           destination: { type: "templates" },
         },
-        {
-          id: "automations",
-          label: t`Automations`,
-          icon: Lightning,
-          destination: { type: "automations" },
-        },
       ],
     },
     {
@@ -118,9 +106,6 @@ export function SettingsNav() {
     {
       label: t`Data`,
       items: [
-        ...(signedIn
-          ? [{ id: "sync" as const, label: t`Sync`, icon: ArrowsClockwise }]
-          : []),
         { id: "imports", label: t`Imports`, icon: DownloadSimple },
       ],
     },

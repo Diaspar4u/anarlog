@@ -1,5 +1,4 @@
 import { CliSettingsSections } from "./cli";
-import { CloudApiSection } from "./cloud-api";
 import { DevtoolsSection } from "./devtools";
 import { LocalApiSection } from "./local-api";
 
@@ -12,7 +11,6 @@ export function SettingsDevelopers() {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
       <SettingsPageTitle title="Developers" />
       <CliSettingsSections />
-      <CloudApiSection />
       <LocalApiSection />
       <DevtoolsSection />
     </div>
