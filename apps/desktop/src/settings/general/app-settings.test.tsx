@@ -78,7 +78,7 @@ describe("AppSettingsView", () => {
     expect(screen.queryByRole("switch", { name: "Cloud sync" })).toBeNull();
   });
 
-  it("keeps telemetry in its dedicated privacy page", () => {
+  it("does not expose telemetry controls", () => {
     renderAppSettings();
 
     expect(

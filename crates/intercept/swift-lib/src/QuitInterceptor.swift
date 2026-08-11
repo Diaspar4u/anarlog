@@ -112,7 +112,7 @@ final class QuitInterceptor {
     }
 
     if event.isARepeat { return nil }
-    onCmdQPressed()
+    performQuit() // standalone mode: single-press quit
     return nil
   }
 

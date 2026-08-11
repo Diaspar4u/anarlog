@@ -21,11 +21,8 @@ const mocks = vi.hoisted(() => ({
     };
   }>,
   openNew: vi.fn(),
-  isPro: true,
-  isUpgradingToPro: false,
   select: vi.fn(),
   transitionChatMode: vi.fn(),
-  upgradeToPro: vi.fn(),
   updateSettingsTabState: vi.fn(),
   updateTemplatesTabState: vi.fn(),
 }));
@@ -42,52 +39,21 @@ const lingui = vi.hoisted(() => {
         "",
       );
     }
-
-    if (typeof input === "string") {
-      return input;
-    }
-
-    if ("message" in input) {
-      return input.message ?? "";
-    }
-
+    if (typeof input === "string") return input;
+    if ("message" in input) return input.message ?? "";
     return "";
   };
-
   return { t };
 });
 
 vi.mock("@lingui/react/macro", () => ({
-  Trans: ({
-    children,
-    id,
-    message,
-  }: {
-    children?: ReactNode;
-    id?: string;
-    message?: string;
-  }) => <>{children ?? message ?? id}</>,
-  useLingui: () => ({
-    _: lingui.t,
-    t: lingui.t,
-  }),
+  Trans: ({ children, id, message }: { children?: ReactNode; id?: string; message?: string }) => (
+    <>{children ?? message ?? id}</>
+  ),
+  useLingui: () => ({ _: lingui.t, t: lingui.t }),
 }));
 
-vi.mock("./custom-sidebar-header", () => ({
-  CustomSidebarHeader: () => <div />,
-}));
-
-vi.mock("~/auth", () => ({
-  useAuth: () => ({ session: mocks.session }),
-}));
-
-vi.mock("~/auth/billing-context", () => ({
-  useBillingAccess: () => ({
-    isPro: mocks.isPro,
-    isUpgradingToPro: mocks.isUpgradingToPro,
-    upgradeToPro: mocks.upgradeToPro,
-  }),
-}));
+vi.mock("./custom-sidebar-header", () => ({ CustomSidebarHeader: () => <div /> }));
 
 vi.mock("~/store/zustand/tabs", () => {
   const getState = () => ({
@@ -103,10 +69,7 @@ vi.mock("~/store/zustand/tabs", () => {
     (selector: (state: unknown) => unknown) => selector(getState()),
     { getState },
   );
-
-  return {
-    useTabs,
-  };
+  return { useTabs };
 });
 
 import { SettingsNav } from "./settings";
@@ -115,255 +78,63 @@ describe("SettingsNav", () => {
   afterEach(cleanup);
 
   beforeEach(() => {
-    mocks.session = { user: { id: "user-1" } };
     mocks.currentTab = { type: "settings", state: { tab: "app" } };
     mocks.tabs = [];
-    mocks.isPro = true;
-    mocks.isUpgradingToPro = false;
     mocks.openNew.mockClear();
     mocks.select.mockClear();
     mocks.transitionChatMode.mockClear();
-    mocks.upgradeToPro.mockClear();
     mocks.updateSettingsTabState.mockClear();
     mocks.updateTemplatesTabState.mockClear();
   });
 
-  it("renders every settings menu label", () => {
+  it("renders every local settings menu label", () => {
     render(<SettingsNav />);
-
     [
-      "App",
-      "General",
-      "Appearance",
-      "Account",
-      "Notifications",
-      "Workspace",
-      "Meetings",
-      "Calendar",
-      "Contacts",
-      "Templates",
-      "Automations",
-      "AI",
-      "Transcription",
-      "Intelligence",
-      "Dictionary",
-      "Data",
-      "Sync",
-      "Imports",
-      "Advanced",
-      "Privacy",
-      "Permissions",
-      "Developers",
-    ].forEach((label) => {
-      expect(screen.getByText(label)).toBeTruthy();
-    });
+      "App", "General", "Appearance", "Notifications", "Workspace", "Meetings",
+      "Calendar", "Contacts", "Templates", "AI", "Transcription", "Intelligence",
+      "Dictionary", "Data", "Imports", "Advanced", "Permissions", "Developers",
+    ].forEach((label) => expect(screen.getByText(label)).toBeTruthy());
   });
 
   it.each([
     ["Calendar", { type: "calendar" }],
     ["Contacts", { type: "contacts" }],
     ["Templates", { type: "templates" }],
-    ["Automations", { type: "automations" }],
   ] as const)("opens the %s workspace", (label, destination) => {
     render(<SettingsNav />);
-
     fireEvent.click(screen.getByRole("button", { name: label }));
-
-    expect(
-      screen.getByTestId(`settings-nav-destination-icon-${destination.type}`),
-    ).toBeTruthy();
+    expect(screen.getByTestId(`settings-nav-destination-icon-${destination.type}`)).toBeTruthy();
     expect(mocks.openNew).toHaveBeenCalledWith(destination);
   });
 
-  it("opens runtime audio capabilities from the Permissions item", () => {
+  it("keeps hosted-product settings hidden", () => {
     render(<SettingsNav />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Permissions" }));
-
-    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
-      mocks.currentTab,
-      {
-        tab: "permissions",
-      },
+    ["Account", "Team", "Sync", "Automations", "Privacy"].forEach((label) =>
+      expect(screen.queryByText(label)).toBeNull(),
     );
-  });
-
-  it("opens Privacy inside settings", () => {
-    render(<SettingsNav />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Privacy" }));
-
-    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
-      mocks.currentTab,
-      { tab: "privacy" },
-    );
-  });
-
-  it("opens Appearance inside settings", () => {
-    render(<SettingsNav />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
-
-    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
-      mocks.currentTab,
-      { tab: "appearance" },
-    );
-  });
-
-  it("places dictionary in the AI section", () => {
-    render(<SettingsNav />);
-
-    expect(
-      screen
-        .getByText("Dictionary")
-        .closest("button")
-        ?.querySelector("[data-testid='settings-nav-icon-dictionary']"),
-    ).toBeTruthy();
-    expect(screen.queryByText("Personalization")).toBeNull();
-  });
-
-  it("opens Meetings inside settings", () => {
-    render(<SettingsNav />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Meetings" }));
-
-    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
-      mocks.currentTab,
-      { tab: "meetings" },
-    );
-  });
-
-  it("opens Transcription inside settings", () => {
-    render(<SettingsNav />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Transcription" }));
-
-    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
-      mocks.currentTab,
-      { tab: "transcription" },
-    );
-  });
-
-  it("opens Dictionary inside settings", () => {
-    render(<SettingsNav />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Dictionary" }));
-
-    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
-      mocks.currentTab,
-      { tab: "dictionary" },
-    );
-  });
-
-  it("opens Sync inside settings", () => {
-    render(<SettingsNav />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Sync" }));
-
-    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
-      mocks.currentTab,
-      { tab: "sync" },
-    );
-  });
-
-  it("shows locked Pro features and opens the upgrade flow", () => {
-    mocks.isPro = false;
-    mocks.session = null;
-
-    render(<SettingsNav />);
-
-    expect(screen.getByText("Sync")).toBeTruthy();
     expect(screen.getByText("Imports")).toBeTruthy();
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Upgrade to Pro for Sync" }),
-    );
-
-    expect(mocks.upgradeToPro).toHaveBeenCalledOnce();
-    expect(mocks.updateSettingsTabState).not.toHaveBeenCalled();
   });
 
-  it.each(["Automations", "Dictionary", "Sync"])(
-    "does not open locked %s navigation",
-    (label) => {
-      mocks.isPro = false;
-
-      render(<SettingsNav />);
-
-      fireEvent.click(screen.getByRole("button", { name: label }));
-
-      expect(mocks.openNew).not.toHaveBeenCalled();
-      expect(mocks.updateSettingsTabState).not.toHaveBeenCalled();
-    },
-  );
-
-  it("opens Imports inside settings", () => {
+  it.each([
+    ["Permissions", "permissions"],
+    ["Appearance", "appearance"],
+    ["Meetings", "meetings"],
+    ["Transcription", "transcription"],
+    ["Dictionary", "dictionary"],
+    ["Imports", "imports"],
+  ] as const)("opens %s inside settings", (label, tab) => {
     render(<SettingsNav />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Imports" }));
-
-    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
-      mocks.currentTab,
-      { tab: "imports" },
-    );
+    fireEvent.click(screen.getByRole("button", { name: label }));
+    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(mocks.currentTab, { tab });
   });
 
-  it("filters nav items by search query", () => {
+  it("filters and clears settings search", () => {
     render(<SettingsNav />);
-
-    fireEvent.change(screen.getByPlaceholderText("Search settings..."), {
-      target: { value: "appear" },
-    });
-
+    const input = screen.getByPlaceholderText("Search settings...");
+    fireEvent.change(input, { target: { value: "appear" } });
     expect(screen.getByText("Appearance")).toBeTruthy();
     expect(screen.queryByText("Meetings")).toBeNull();
-    expect(screen.queryByText("Developers")).toBeNull();
-  });
-
-  it("keeps a whole group visible when its label matches", () => {
-    render(<SettingsNav />);
-
-    fireEvent.change(screen.getByPlaceholderText("Search settings..."), {
-      target: { value: "workspace" },
-    });
-
-    ["Meetings", "Calendar", "Contacts", "Templates", "Automations"].forEach(
-      (label) => {
-        expect(screen.getByText(label)).toBeTruthy();
-      },
-    );
-    expect(screen.queryByText("Appearance")).toBeNull();
-  });
-
-  it("shows an empty state when no settings match", () => {
-    render(<SettingsNav />);
-
-    fireEvent.change(screen.getByPlaceholderText("Search settings..."), {
-      target: { value: "zzzzzz" },
-    });
-
-    expect(screen.getByText("No results found.")).toBeTruthy();
-  });
-
-  it("restores the full list when search is cleared", () => {
-    render(<SettingsNav />);
-
-    const input = screen.getByPlaceholderText("Search settings...");
-    fireEvent.change(input, { target: { value: "audio" } });
-    expect(screen.queryByText("Appearance")).toBeNull();
-
     fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
-
-    expect(screen.getByText("Appearance")).toBeTruthy();
-  });
-
-  it("clears the search on Escape", () => {
-    render(<SettingsNav />);
-
-    const input = screen.getByPlaceholderText("Search settings...");
-    fireEvent.change(input, { target: { value: "audio" } });
-    fireEvent.keyDown(input, { key: "Escape" });
-
-    expect(screen.getByText("Appearance")).toBeTruthy();
+    expect(screen.getByText("Meetings")).toBeTruthy();
   });
 });

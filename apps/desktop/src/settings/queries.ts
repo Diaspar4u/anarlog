@@ -453,16 +453,8 @@ function applySettingSideEffects(values: SettingValues): void {
       .setMicActiveThreshold(values.mic_active_threshold)
       .catch(console.error);
   }
-  if (values.telemetry_consent !== undefined) {
-    void analyticsCommands
-      .setDisabled(!values.telemetry_consent)
-      .catch(console.error);
-  }
-  if (values.crash_reporting_consent !== undefined) {
-    void setErrorReportingEnabled(values.crash_reporting_consent).catch(
-      console.error,
-    );
-  }
+  void analyticsCommands.setDisabled(true).catch(console.error);
+  void setErrorReportingEnabled(false).catch(console.error);
   if (values.show_app_in_dock !== undefined) {
     void windowsCommands
       .setShowAppInDock(values.show_app_in_dock)

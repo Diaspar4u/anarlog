@@ -12,6 +12,7 @@ pub use ext::*;
 pub(crate) use store::*;
 
 const PLUGIN_NAME: &str = "updater2";
+const UPDATES_ENABLED: bool = false;
 
 fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
@@ -136,6 +137,11 @@ async fn check_and_download<R: tauri::Runtime>(
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn local_fork_disables_updates() {
+        assert!(!UPDATES_ENABLED);
+    }
 
     #[test]
     fn export_types() {

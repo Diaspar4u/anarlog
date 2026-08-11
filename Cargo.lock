@@ -4852,7 +4852,7 @@ dependencies = [
 
 [[package]]
 name = "desktop"
-version = "0.0.0"
+version = "1.4.8+ads"
 dependencies = [
  "audio-actual",
  "audio-mock",
@@ -11697,6 +11697,7 @@ dependencies = [
  "serde_json",
  "specta",
  "tauri-specta",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tracing",

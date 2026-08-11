@@ -21,7 +21,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     name: "Granola",
     access: "MCP",
     helpUrl: "https://docs.granola.ai/help-center/sharing/integrations/mcp",
-    directImport: "mcp-oauth",
     nativeNames: ["Granola"],
     bundleIds: ["com.granola.app", "com.getgranola.app"],
   },
@@ -31,7 +30,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     access: "MCP",
     helpUrl:
       "https://support.circleback.ai/en/articles/13249081-circleback-mcp",
-    directImport: "mcp-oauth",
     nativeNames: ["Circleback"],
   },
   {
@@ -39,7 +37,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     name: "Fireflies.ai",
     access: "MCP",
     helpUrl: "https://docs.fireflies.ai/mcp-tools/overview",
-    directImport: "mcp-oauth",
     nativeNames: ["Fireflies", "Fireflies.ai"],
   },
   {
@@ -47,7 +44,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     name: "Krisp",
     access: "MCP",
     helpUrl: "https://help.krisp.ai/hc/en-us/articles/25396920405148-Krisp-MCP",
-    directImport: "mcp-oauth",
     nativeNames: ["Krisp"],
     bundleIds: ["ai.krisp.krispMac"],
   },
@@ -65,7 +61,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     access: "MCP",
     helpUrl:
       "https://support.read.ai/hc/en-us/articles/49379985941523-Read-AI-API-and-MCP-Overview",
-    directImport: "mcp-oauth",
     nativeNames: ["Read AI"],
   },
   {
@@ -81,7 +76,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     name: "Fellow",
     access: "MCP",
     helpUrl: "https://help.fellow.ai/en/articles/12622641-fellow-s-mcp-server",
-    directImport: "mcp-oauth",
     nativeNames: ["Fellow"],
   },
   {
@@ -90,7 +84,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     access: "MCP",
     helpUrl:
       "https://help.tactiq.io/en/articles/14883619-connecting-tactiq-mcp-server",
-    directImport: "mcp-oauth",
   },
   {
     id: "grain",
@@ -145,7 +138,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     name: "Jiminny",
     access: "MCP",
     helpUrl: "https://help.jiminny.com/en/articles/15292810-jiminny-mcp",
-    directImport: "mcp-oauth",
     nativeNames: ["Jiminny", "Jiminny Sidekick"],
   },
   {

@@ -1,5 +1,4 @@
 import { CliSettingsSections } from "./cli";
-import { CloudApiSection } from "./cloud-api";
 import { DevtoolsSection } from "./devtools";
 import { WebhooksSection } from "./webhooks";
 
@@ -12,7 +11,6 @@ export function SettingsDevelopers() {
     <div className="flex flex-col gap-8">
       <SettingsPageTitle title="Developers" />
       <CliSettingsSections />
-      <CloudApiSection />
       <WebhooksSection />
       <DevtoolsSection />
     </div>

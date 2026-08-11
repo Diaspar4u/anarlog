@@ -81,7 +81,7 @@ describe("sidebar toast registry", () => {
     expect(toast?.lifecycle).toEqual({ type: "condition-bound" });
   });
 
-  it("suggests signing in before provider setup", () => {
+  it("keeps sign-in promotion hidden before provider setup", () => {
     const toast = getToastToShow(
       createToastRegistry({
         ...baseParams,
@@ -92,9 +92,8 @@ describe("sidebar toast registry", () => {
       () => false,
     );
 
-    expect(toast?.id).toBe("sign-in-benefits");
-    expect(toast?.description).toBe("Sign in to get the most out of Anarlog");
-    expect(toast?.primaryAction?.label).toBe("Sign in");
+    expect(toast?.id).toBe("missing-stt");
+    expect(toast?.description).toBe("Transcription provider needed");
   });
 
   it("asks for a usable transcription provider after sign-in is dismissed", () => {
@@ -163,7 +162,7 @@ describe("sidebar toast registry", () => {
     expect(toast?.description).toBe("Starting transcription...");
   });
 
-  it("keeps initial cloud sync condition-bound", () => {
+  it("keeps initial cloud sync hidden", () => {
     const toast = getToastToShow(
       createToastRegistry({
         ...baseParams,
@@ -172,31 +171,19 @@ describe("sidebar toast registry", () => {
       () => false,
     );
 
-    expect(toast?.id).toBe("cloudsync-initial-sync-user-1");
-    expect(toast?.description).toBe("Syncing your data in the background...");
-    expect(toast?.lifecycle).toEqual({ type: "condition-bound" });
-    expect(toast?.loading).toBe(true);
+    expect(toast).toBeNull();
   });
 
-  it("renders the pro upgrade toast without an icon", () => {
+  it("keeps the pro upgrade toast hidden", () => {
     const toast = getToastToShow(
       createToastRegistry({
         ...baseParams,
         isAuthenticated: false,
       }),
-      (toast) => toast.id === "sign-in-benefits",
+      (candidate) => candidate.id === "sign-in-benefits",
     );
-    const previewToast = createDevtoolsToastPreview({
-      preview: "pro",
-      onSignIn: vi.fn(),
-      onOpenLLMSettings: vi.fn(),
-      onOpenSTTSettings: vi.fn(),
-    });
 
-    expect(toast?.id).toBe("upgrade-to-pro");
-    expect(toast?.description).toBe("Pro features available");
-    expect(toast?.icon).toBeUndefined();
-    expect(previewToast.icon).toBeUndefined();
+    expect(toast).toBeNull();
   });
 
   it("uses one permanent dismissal for sign-in and Pro promotions", () => {

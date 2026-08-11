@@ -314,7 +314,7 @@ describe("OuterHeader", () => {
     ["summary", { type: "enhanced", id: "summary-1" }],
     ["memos", { type: "raw" }],
     ["transcript", { type: "transcript" }],
-  ])("shows sharing from the %s view", (_label, currentView) => {
+  ])("keeps cloud sharing hidden from the %s view", (_label, currentView) => {
     render(
       <OuterHeader
         sessionId="session-1"
@@ -326,8 +326,8 @@ describe("OuterHeader", () => {
     const title = screen.getByText("Session title");
     const titleSlot = title.parentElement?.parentElement;
 
-    expect(mocks.shareSessionIds).toEqual(["session-1"]);
-    expect(screen.getByRole("button", { name: "Share" })).not.toBeNull();
+    expect(mocks.shareSessionIds).toEqual([]);
+    expect(screen.queryByRole("button", { name: "Share" })).toBeNull();
     expect(titleSlot?.className).toContain("right-[140px]");
   });
 
@@ -420,7 +420,7 @@ describe("OuterHeader", () => {
     const overflowProps = mocks.overflowProps[mocks.overflowProps.length - 1];
     expect(overflowProps?.standaloneWindow).toBe(true);
     expect(overflowProps?.allowListening).toBeUndefined();
-    expect(mocks.shareSessionIds).toContain("session-1");
+    expect(mocks.shareSessionIds).toEqual([]);
   });
 
   it("does not reserve collapsed sidebar gutter in standalone windows", () => {
