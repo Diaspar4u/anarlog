@@ -105,9 +105,7 @@ export function SettingsNav() {
     },
     {
       label: t`Data`,
-      items: [
-        { id: "imports", label: t`Imports`, icon: DownloadSimple },
-      ],
+      items: [{ id: "imports", label: t`Imports`, icon: DownloadSimple }],
     },
     {
       label: t`Advanced`,
@@ -128,6 +126,7 @@ export function SettingsNav() {
                 ...group,
                 items: group.items.filter((item) =>
                   item.label.toLowerCase().includes(query),
+                ),
               },
         )
         .filter((group) => group.items.length > 0)

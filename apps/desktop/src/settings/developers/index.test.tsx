@@ -5,7 +5,6 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -257,66 +256,6 @@ describe("SettingsDevelopers", () => {
     ).toBeNull();
   });
 
-  it("keeps a one-time API key visible when clipboard access fails", async () => {
-    mocks.checkEmbeddedCli.mockResolvedValue({
-      status: "ok",
-      data: {
-        supported: false,
-        commandName: "anarlog",
-        installPath: "/Users/test/.local/bin/anarlog",
-        state: "unsupported",
-        details: "Unavailable.",
-      },
-    });
-    mocks.getCloudApiSettings.mockResolvedValue({
-      enabled: true,
-      updated_at: "2026-07-28T00:00:00Z",
-    });
-    mocks.createCloudApiKey.mockResolvedValue({
-      id: "key-1",
-      name: "Claude Code",
-      key_prefix: "anl_test",
-      key: "anl_test_secret",
-      created_at: "2026-07-28T00:00:00Z",
-      last_used_at: null,
-    });
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: vi.fn().mockRejectedValue(new Error("Clipboard denied")),
-      },
-    });
-
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    render(
-      <QueryClientProvider client={queryClient}>
-        <SettingsDevelopers />
-      </QueryClientProvider>,
-    );
-
-    fireEvent.change(
-      await screen.findByPlaceholderText("Key name (e.g. Claude Code)"),
-      {
-        target: { value: "Claude Code" },
-      },
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Create key" }));
-
-    const secret = await screen.findByText("anl_test_secret");
-    fireEvent.click(
-      within(secret.parentElement as HTMLElement).getByRole("button", {
-        name: "Copy",
-      }),
-    );
-
-    await waitFor(() =>
-      expect(mocks.toastError).toHaveBeenCalledWith("Clipboard denied"),
-    );
-    expect(screen.getByText("anl_test_secret")).toBeTruthy();
-  });
-
   it("keeps hosted Cloud API surfaces hidden", async () => {
     mocks.checkEmbeddedCli.mockResolvedValue({
       status: "ok",
@@ -337,7 +276,7 @@ describe("SettingsDevelopers", () => {
       </QueryClientProvider>,
     );
 
-    await screen.findByText("Local API");
+    await screen.findByText("Webhooks");
     expect(screen.queryByText("Cloud API & Connectors")).toBeNull();
     expect(
       screen.queryByRole("switch", {

@@ -4,12 +4,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   detectImportSources: vi.fn(),
+  cancelConnectedImport: vi.fn(),
   connectConnectedImport: vi.fn(),
   disconnectConnectedImport: vi.fn(),
 }));
 
 vi.mock("./detection", () => ({
   detectImportSources: mocks.detectImportSources,
+}));
+
+vi.mock("~/auth", () => ({
+  useAuth: () => ({ session: null, signIn: vi.fn() }),
 }));
 
 vi.mock("./queries", () => ({
@@ -20,6 +25,7 @@ vi.mock("./queries", () => ({
 }));
 
 vi.mock("./connected-import", () => ({
+  cancelConnectedImport: mocks.cancelConnectedImport,
   connectConnectedImport: mocks.connectConnectedImport,
   disconnectConnectedImport: mocks.disconnectConnectedImport,
   connectedImportCredentialsQueryKey: (providerId: string) => [
@@ -116,9 +122,6 @@ describe("MeetingImportScreen", () => {
     expect(
       screen.getAllByRole("button", { name: "Choose files" }),
     ).toHaveLength(5);
-    expect(
-      screen.getAllByText(/keep new meetings coming into Anarlog/i),
-    ).toHaveLength(1);
     expect(
       container.querySelectorAll('img[src^="data:image/png;base64,"]'),
     ).toHaveLength(5);

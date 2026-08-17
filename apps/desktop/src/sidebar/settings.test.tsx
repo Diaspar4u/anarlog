@@ -47,13 +47,21 @@ const lingui = vi.hoisted(() => {
 });
 
 vi.mock("@lingui/react/macro", () => ({
-  Trans: ({ children, id, message }: { children?: ReactNode; id?: string; message?: string }) => (
-    <>{children ?? message ?? id}</>
-  ),
+  Trans: ({
+    children,
+    id,
+    message,
+  }: {
+    children?: ReactNode;
+    id?: string;
+    message?: string;
+  }) => <>{children ?? message ?? id}</>,
   useLingui: () => ({ _: lingui.t, t: lingui.t }),
 }));
 
-vi.mock("./custom-sidebar-header", () => ({ CustomSidebarHeader: () => <div /> }));
+vi.mock("./custom-sidebar-header", () => ({
+  CustomSidebarHeader: () => <div />,
+}));
 
 vi.mock("~/store/zustand/tabs", () => {
   const getState = () => ({
@@ -90,9 +98,24 @@ describe("SettingsNav", () => {
   it("renders every local settings menu label", () => {
     render(<SettingsNav />);
     [
-      "App", "General", "Appearance", "Notifications", "Workspace", "Meetings",
-      "Calendar", "Contacts", "Templates", "AI", "Transcription", "Intelligence",
-      "Dictionary", "Data", "Imports", "Advanced", "Permissions", "Developers",
+      "App",
+      "General",
+      "Appearance",
+      "Notifications",
+      "Workspace",
+      "Meetings",
+      "Calendar",
+      "Contacts",
+      "Templates",
+      "AI",
+      "Transcription",
+      "Intelligence",
+      "Dictionary",
+      "Data",
+      "Imports",
+      "Advanced",
+      "Permissions",
+      "Developers",
     ].forEach((label) => expect(screen.getByText(label)).toBeTruthy());
   });
 
@@ -103,7 +126,9 @@ describe("SettingsNav", () => {
   ] as const)("opens the %s workspace", (label, destination) => {
     render(<SettingsNav />);
     fireEvent.click(screen.getByRole("button", { name: label }));
-    expect(screen.getByTestId(`settings-nav-destination-icon-${destination.type}`)).toBeTruthy();
+    expect(
+      screen.getByTestId(`settings-nav-destination-icon-${destination.type}`),
+    ).toBeTruthy();
     expect(mocks.openNew).toHaveBeenCalledWith(destination);
   });
 
@@ -125,7 +150,10 @@ describe("SettingsNav", () => {
   ] as const)("opens %s inside settings", (label, tab) => {
     render(<SettingsNav />);
     fireEvent.click(screen.getByRole("button", { name: label }));
-    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(mocks.currentTab, { tab });
+    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
+      mocks.currentTab,
+      { tab },
+    );
   });
 
   it("filters and clears settings search", () => {

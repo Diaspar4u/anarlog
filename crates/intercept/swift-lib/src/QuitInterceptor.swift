@@ -112,7 +112,7 @@ final class QuitInterceptor {
     }
 
     if event.isARepeat { return nil }
-    performQuit() // standalone mode: single-press quit
+    performQuit()  // standalone mode: single-press quit
     return nil
   }
 

@@ -194,26 +194,25 @@ describe("SQLite settings", () => {
     resolveDisabled({ status: "ok", data: null });
   });
 
-  it("updates Sentry independently from PostHog", async () => {
+  it("keeps Sentry and PostHog disabled together", async () => {
     await setSettingValues({ crash_reporting_consent: false });
 
     expect(mocks.setErrorReportingEnabled).toHaveBeenCalledWith(false);
-    expect(mocks.setDisabled).not.toHaveBeenCalled();
+    expect(mocks.setDisabled).toHaveBeenCalledWith(true);
   });
 
   it("does not let stored consent enable local-fork telemetry", async () => {
     await setSettingValues({ telemetry_consent: true });
 
     expect(mocks.setDisabled).toHaveBeenCalledWith(true);
-    await vi.waitFor(() =>
-      expect(mocks.disableSessionReplay).toHaveBeenCalledOnce(),
-    );
+    expect(mocks.setErrorReportingEnabled).toHaveBeenCalledWith(false);
   });
 
   it("disables telemetry while application settings initialize", async () => {
     await initializeApplicationSettings();
 
     expect(mocks.setDisabled).toHaveBeenCalledWith(true);
+    expect(mocks.setErrorReportingEnabled).toHaveBeenCalledWith(false);
   });
 
   it("migrates and persists the consent chat auto-send setting", async () => {

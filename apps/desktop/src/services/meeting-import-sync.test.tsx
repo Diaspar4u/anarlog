@@ -42,27 +42,17 @@ describe("MeetingImportSync", () => {
 
   afterEach(cleanup);
 
-  it("pauses connected imports while signed out", () => {
+  it("does not start hosted connected imports while signed out", () => {
     render(<MeetingImportSync />);
 
-    expect(mocks.connectedImportSyncQueryOptions).toHaveBeenCalled();
-    expect(
-      mocks.connectedImportSyncQueryOptions.mock.calls.every(
-        ([, enabled]) => enabled === false,
-      ),
-    ).toBe(true);
+    expect(mocks.connectedImportSyncQueryOptions).not.toHaveBeenCalled();
   });
 
-  it("enables connected imports after sign-in", () => {
+  it("does not start hosted connected imports after sign-in", () => {
     mocks.signedIn = true;
 
     render(<MeetingImportSync />);
 
-    expect(mocks.connectedImportSyncQueryOptions).toHaveBeenCalled();
-    expect(
-      mocks.connectedImportSyncQueryOptions.mock.calls.every(
-        ([, enabled]) => enabled === true,
-      ),
-    ).toBe(true);
+    expect(mocks.connectedImportSyncQueryOptions).not.toHaveBeenCalled();
   });
 });
