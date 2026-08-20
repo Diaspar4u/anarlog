@@ -45,14 +45,14 @@ trap on_exit EXIT
 
 usage() {
     printf '%s\n' \
-        'Usage: scripts/release.sh --version <semver+ads> [options]' \
+        'Usage: scripts/release.sh --version <semver-ads.N> [options]' \
         '' \
         'Builds, Apple-signs, verifies, packages, and Tauri-signs Anarlog.' \
         'With --publish, it uploads the immutable release asset, verifies it,' \
         'publishes latest.json last, and verifies the public update channel.' \
         '' \
         'Options:' \
-        '  --version <semver+ads>      Monotonically newer maintained version.' \
+        '  --version <semver-ads.N>    Ordered revision on the pinned upstream version.' \
         '  --output-dir <directory>    Artifact directory.' \
         '  --publish                   Publish release asset and latest.json.' \
         '  --allow-dirty               Permit a prepare-only build from dirty source.' \
@@ -92,7 +92,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+\+ads$ ]] || fail '--version must match X.Y.Z+ads'
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-ads\.[1-9][0-9]*$ ]] || fail '--version must match X.Y.Z-ads.N'
 [[ -f "$STABLE_CONFIG" ]] || fail "Missing $STABLE_CONFIG"
 [[ -f "$STABLE_MACOS_CONFIG" ]] || fail "Missing $STABLE_MACOS_CONFIG"
 [[ -f "$ENTITLEMENTS" ]] || fail "Missing $ENTITLEMENTS"
@@ -174,7 +174,7 @@ log 'Verifying Tauri updater signature'
 cargo run --quiet -p updater-core --bin verify-updater-signature -- \
     "$TAURI_ARCHIVE" "$TAURI_SIGNATURE" "$STABLE_CONFIG"
 
-SAFE_VERSION="${VERSION/+/-}"
+SAFE_VERSION="$VERSION"
 ARCHIVE_NAME="Anarlog-$SAFE_VERSION-macos-aarch64.app.tar.gz"
 ARCHIVE_PATH="$OUTPUT_DIR/$ARCHIVE_NAME"
 SIGNATURE_PATH="$OUTPUT_DIR/$ARCHIVE_NAME.sig"

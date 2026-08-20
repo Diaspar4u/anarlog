@@ -4,6 +4,8 @@ import { latestContent, latestVersion } from "virtual:changelog";
 
 import { processContent } from "@anlg/changelog";
 
+import { upstreamChangelogVersion } from "./version";
+
 export function getLatestVersion(): string | null {
   return latestVersion;
 }
@@ -11,7 +13,8 @@ export function getLatestVersion(): string | null {
 async function fetchChangelogFromGitHub(
   version: string,
 ): Promise<string | null> {
-  const url = `https://raw.githubusercontent.com/fastrepl/anarlog/main/packages/changelog/content/${version}.md`;
+  const upstreamVersion = upstreamChangelogVersion(version);
+  const url = `https://raw.githubusercontent.com/fastrepl/anarlog/main/packages/changelog/content/${upstreamVersion}.md`;
   try {
     const response = await fetch(url);
     if (!response.ok) {

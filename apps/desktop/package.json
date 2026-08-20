@@ -1,6 +1,6 @@
 {
   "name": "@anlg/desktop",
-  "version": "1.4.10+ads",
+  "version": "1.4.9-ads.1",
   "private": true,
   "type": "module",
   "scripts": {
