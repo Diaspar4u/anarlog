@@ -19,7 +19,7 @@ const EXCLUDED_FEATURES = [
 
 describe("getForkChangelog", () => {
   it("returns curated notes for the maintained fork release", () => {
-    const content = getForkChangelog("1.4.13-ads.1");
+    const content = getForkChangelog("1.4.13-ads.2");
 
     expect(content).toContain("OpenAI");
     expect(content).toContain("AssemblyAI");
@@ -30,7 +30,7 @@ describe("getForkChangelog", () => {
   it.each(EXCLUDED_FEATURES)(
     "omits removed or unused feature: %s",
     (feature) => {
-      expect(getForkChangelog("1.4.13-ads.1")).not.toMatch(
+      expect(getForkChangelog("1.4.13-ads.2")).not.toMatch(
         new RegExp(feature, "i"),
       );
     },
