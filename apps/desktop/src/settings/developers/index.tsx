@@ -5,7 +5,6 @@ import { commands as openerCommands } from "@anlg/plugin-opener2";
 import { Button } from "@anlg/ui/components/ui/button";
 
 import { CliSettingsSections } from "./cli";
-import { CloudApiSection } from "./cloud-api";
 import { DevtoolsSection } from "./devtools";
 import { WebhooksSection } from "./webhooks";
 
@@ -33,7 +32,7 @@ export function SettingsDevelopers() {
         </Button>
       </div>
       <CliSettingsSections />
-      <CloudApiSection />
+
       <WebhooksSection />
       <DevtoolsSection />
     </div>

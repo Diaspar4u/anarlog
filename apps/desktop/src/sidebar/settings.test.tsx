@@ -134,35 +134,34 @@ describe("SettingsNav", () => {
     mocks.workspacesLoading = false;
   });
 
-  it("renders every settings menu label", () => {
+  it("renders local settings without hosted-product navigation", () => {
     render(<SettingsNav />);
 
     [
       "App",
       "General",
       "Appearance",
-      "Account",
-      "Team",
       "Notifications",
       "Workspace",
       "Meetings",
       "Calendar",
       "Contacts",
       "Templates",
-      "Automations",
       "AI",
       "Transcription",
       "Intelligence",
       "Dictionary",
       "Data",
-      "Sync",
       "Imports",
       "Advanced",
-      "Privacy",
       "Permissions",
       "Developers",
     ].forEach((label) => {
       expect(screen.getByText(label)).toBeTruthy();
+    });
+
+    ["Account", "Team", "Automations", "Sync", "Privacy"].forEach((label) => {
+      expect(screen.queryByText(label)).toBeNull();
     });
   });
 
@@ -170,7 +169,6 @@ describe("SettingsNav", () => {
     ["Calendar", { type: "calendar" }],
     ["Contacts", { type: "contacts" }],
     ["Templates", { type: "templates" }],
-    ["Automations", { type: "automations" }],
   ] as const)("opens the %s workspace", (label, destination) => {
     render(<SettingsNav />);
 
@@ -192,17 +190,6 @@ describe("SettingsNav", () => {
       {
         tab: "permissions",
       },
-    );
-  });
-
-  it("opens Privacy inside settings", () => {
-    render(<SettingsNav />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Privacy" }));
-
-    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
-      mocks.currentTab,
-      { tab: "privacy" },
     );
   });
 
@@ -262,91 +249,19 @@ describe("SettingsNav", () => {
     );
   });
 
-  it("opens Sync inside settings", () => {
+  it("keeps useful local settings unlocked without an upgrade flow", () => {
+    mocks.isPro = false;
+
     render(<SettingsNav />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Sync" }));
+    fireEvent.click(screen.getByRole("button", { name: "Dictionary" }));
 
     expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
       mocks.currentTab,
-      { tab: "sync" },
+      { tab: "dictionary" },
     );
-  });
-
-  it("shows locked Pro features and opens the upgrade flow", () => {
-    mocks.isPro = false;
-
-    render(<SettingsNav />);
-
-    expect(screen.getByText("Sync")).toBeTruthy();
-    expect(screen.getByText("Imports")).toBeTruthy();
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Upgrade to Pro for Sync" }),
-    );
-
-    expect(mocks.upgradeToPro).toHaveBeenCalledOnce();
-    expect(mocks.updateSettingsTabState).not.toHaveBeenCalled();
-  });
-
-  it.each(["Team", "Automations", "Dictionary", "Sync"])(
-    "does not open locked %s navigation",
-    (label) => {
-      mocks.isPro = false;
-
-      render(<SettingsNav />);
-
-      fireEvent.click(screen.getByRole("button", { name: label }));
-
-      expect(mocks.openNew).not.toHaveBeenCalled();
-      expect(mocks.updateSettingsTabState).not.toHaveBeenCalled();
-    },
-  );
-
-  it("shows Team with the Pro lock on the free plan", () => {
-    mocks.isPro = false;
-
-    render(<SettingsNav />);
-
-    expect(screen.getByRole("button", { name: "Team" })).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Upgrade to Pro for Team" }),
-    ).toBeTruthy();
-  });
-
-  it("opens Team for free members of an existing workspace", () => {
-    mocks.isPro = false;
-    mocks.workspaces = [{ workspaceId: "ws-1" }];
-
-    render(<SettingsNav />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Team" }));
-
-    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
-      mocks.currentTab,
-      { tab: "team" },
-    );
-    expect(
-      screen.queryByRole("button", { name: "Upgrade to Pro for Team" }),
-    ).toBeNull();
-  });
-
-  it("does not lock Team while workspaces are still loading", () => {
-    mocks.isPro = false;
-    mocks.workspaces = undefined;
-    mocks.workspacesLoading = true;
-
-    render(<SettingsNav />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Team" }));
-
-    expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
-      mocks.currentTab,
-      { tab: "team" },
-    );
-    expect(
-      screen.queryByRole("button", { name: "Upgrade to Pro for Team" }),
-    ).toBeNull();
+    expect(mocks.upgradeToPro).not.toHaveBeenCalled();
+    expect(screen.queryByText("Upgrade to Pro")).toBeNull();
   });
 
   it("opens Imports inside settings", () => {
@@ -379,11 +294,9 @@ describe("SettingsNav", () => {
       target: { value: "workspace" },
     });
 
-    ["Meetings", "Calendar", "Contacts", "Templates", "Automations"].forEach(
-      (label) => {
-        expect(screen.getByText(label)).toBeTruthy();
-      },
-    );
+    ["Meetings", "Calendar", "Contacts", "Templates"].forEach((label) => {
+      expect(screen.getByText(label)).toBeTruthy();
+    });
     expect(screen.queryByText("Appearance")).toBeNull();
   });
 

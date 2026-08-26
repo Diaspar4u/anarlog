@@ -20,6 +20,7 @@ type NotificationEventRow = {
   tracking_id_event: string;
   recurrence_series_id: string;
   is_all_day: boolean | number;
+  meeting_link: string | null;
 };
 
 export async function checkEventNotifications(
@@ -42,7 +43,8 @@ export async function checkEventNotifications(
         started_at,
         tracking_id_event,
         recurrence_series_id,
-        is_all_day
+        is_all_day,
+        meeting_link
       FROM events
       WHERE deleted_at IS NULL AND started_at <> '' AND is_all_day = 0
       ORDER BY started_at, id
@@ -50,6 +52,10 @@ export async function checkEventNotifications(
   ]);
 
   for (const event of events) {
+    if (!event.meeting_link?.trim()) {
+      continue;
+    }
+
     if (Boolean(event.is_all_day)) {
       continue;
     }

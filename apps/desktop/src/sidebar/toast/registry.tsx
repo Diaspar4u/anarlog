@@ -148,7 +148,7 @@ export function createToastRegistry({
           dismissalId: "auth-promotion",
         },
       },
-      condition: () => !isAuthLoading && !isAuthenticated,
+      condition: () => false,
     },
     {
       toast: {
@@ -192,13 +192,7 @@ export function createToastRegistry({
         },
       },
       // suppress until auth resolves to avoid flash on startup
-      condition: () =>
-        !isAuthLoading &&
-        !isAuthenticated &&
-        hasLLMConfigured &&
-        hasSttConfigured &&
-        !hasProSttConfigured &&
-        !hasProLlmConfigured,
+      condition: () => false,
     },
   ];
 }

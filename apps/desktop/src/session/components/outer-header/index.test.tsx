@@ -320,7 +320,7 @@ describe("OuterHeader", () => {
     ["summary", { type: "enhanced", id: "summary-1" }],
     ["memos", { type: "raw" }],
     ["transcript", { type: "transcript" }],
-  ])("shows sharing from the %s view", (_label, currentView) => {
+  ])("keeps cloud sharing hidden from the %s view", (_label, currentView) => {
     const { container } = render(
       <OuterHeader
         sessionId="session-1"
@@ -330,8 +330,8 @@ describe("OuterHeader", () => {
 
     const spacer = container.firstElementChild?.firstElementChild;
 
-    expect(mocks.shareSessionIds).toEqual(["session-1"]);
-    expect(screen.getByRole("button", { name: "Share" })).not.toBeNull();
+    expect(mocks.shareSessionIds).toEqual([]);
+    expect(screen.queryByRole("button", { name: "Share" })).toBeNull();
     expect(spacer?.className).toContain("flex-1");
   });
 
@@ -381,7 +381,7 @@ describe("OuterHeader", () => {
     expect(actionStrip?.hasAttribute("data-tauri-drag-region")).toBe(true);
   });
 
-  it("places the folder, calendar, and share controls in order", () => {
+  it("places the local folder and calendar controls in order", () => {
     mocks.hasTranscriptBySession = { "session-1": true };
 
     const { container } = render(
@@ -402,22 +402,18 @@ describe("OuterHeader", () => {
     const calendar = screen.getByRole("button", {
       name: "Open event metadata",
     });
-    const share = screen.getByRole("button", { name: "Share" });
     const actionStrip = header?.lastElementChild;
     const actionChildren = [...(actionStrip?.children ?? [])];
 
     expect(header?.firstElementChild).toBe(views);
     expect(actionStrip?.contains(folder)).toBe(true);
     expect(actionStrip?.contains(calendar)).toBe(true);
-    expect(actionStrip?.contains(share)).toBe(true);
+    expect(screen.queryByRole("button", { name: "Share" })).toBeNull();
     expect(
       actionChildren.findIndex((child) => child.contains(folder)),
     ).toBeLessThan(
       actionChildren.findIndex((child) => child.contains(calendar)),
     );
-    expect(
-      actionChildren.findIndex((child) => child.contains(calendar)),
-    ).toBeLessThan(actionChildren.findIndex((child) => child.contains(share)));
   });
 
   it("shows an editable title in the header on the summary tab", () => {
@@ -668,7 +664,7 @@ describe("OuterHeader", () => {
     const overflowProps = mocks.overflowProps[mocks.overflowProps.length - 1];
     expect(overflowProps?.standaloneWindow).toBe(true);
     expect(overflowProps?.allowListening).toBeUndefined();
-    expect(mocks.shareSessionIds).toContain("session-1");
+    expect(mocks.shareSessionIds).toEqual([]);
   });
 
   it("delegates live meeting stop from the header pill in standalone windows", () => {

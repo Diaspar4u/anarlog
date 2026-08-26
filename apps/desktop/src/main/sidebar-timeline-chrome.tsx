@@ -12,6 +12,8 @@ import type { SidebarNoteFilter } from "~/sidebar/note-filter";
 import { SidebarNoteFilterMenu } from "~/sidebar/note-filter-menu";
 import { useSidebarUpcomingMeetingStatus } from "~/sidebar/timeline/upcoming-meeting";
 
+const SHOW_CLOUD_NOTE_FILTER = false;
+
 export const SidebarTimelineChromeWithUpcomingMeeting = memo(
   function SidebarTimelineChromeWithUpcomingMeeting({
     currentSessionId,
@@ -112,10 +114,12 @@ function SidebarTimelineChrome({
             <LeftSurfaceChromeButton ariaLabel="New note" onClick={onNewNote}>
               <NotePencil size={15} />
             </LeftSurfaceChromeButton>
-            <SidebarNoteFilterMenu
-              value={noteFilter}
-              onValueChange={onNoteFilterChange}
-            />
+            {SHOW_CLOUD_NOTE_FILTER ? (
+              <SidebarNoteFilterMenu
+                value={noteFilter}
+                onValueChange={onNoteFilterChange}
+              />
+            ) : null}
           </>
         ) : null}
       </div>

@@ -45,6 +45,7 @@ describe("checkEventNotifications", () => {
         recurrence_series_id: "series-1",
         title: "Design Review",
         is_all_day: 0,
+        meeting_link: "https://meet.example.com/design-review",
       },
     ]);
 
@@ -64,6 +65,34 @@ describe("checkEventNotifications", () => {
       }),
     );
     expect(mocks.execute.mock.calls[0]?.[0]).toContain("is_all_day = 0");
+    expect(mocks.execute.mock.calls[0]?.[0]).toContain("meeting_link");
+  });
+
+  test("skips events without a nonblank meeting link", async () => {
+    mocks.execute.mockResolvedValueOnce([
+      {
+        id: "event-missing-link",
+        started_at: "2026-05-15T12:02:00.000Z",
+        tracking_id_event: "tracking-1",
+        recurrence_series_id: "",
+        title: "Focus time",
+        is_all_day: 0,
+        meeting_link: "",
+      },
+      {
+        id: "event-blank-link",
+        started_at: "2026-05-15T12:03:00.000Z",
+        tracking_id_event: "tracking-2",
+        recurrence_series_id: "",
+        title: "Heads down",
+        is_all_day: 0,
+        meeting_link: "  ",
+      },
+    ]);
+
+    await checkEventNotifications(true, new Map());
+
+    expect(mocks.showNotification).not.toHaveBeenCalled();
   });
 
   test("does not query or notify when event notifications are disabled", async () => {
@@ -86,6 +115,7 @@ describe("checkEventNotifications", () => {
         recurrence_series_id: "",
         title: "Design Review",
         is_all_day: 0,
+        meeting_link: "https://meet.example.com/design-review",
       },
     ]);
 
@@ -103,6 +133,7 @@ describe("checkEventNotifications", () => {
         recurrence_series_id: "",
         title: "Company holiday",
         is_all_day: 1,
+        meeting_link: "https://meet.example.com/company-holiday",
       },
     ]);
 

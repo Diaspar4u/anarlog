@@ -662,5 +662,9 @@ const PROVIDER_ORDER = [
   "apple_foundation",
 ] as const;
 
-export const PROVIDERS: Provider[] = sortProviders(_PROVIDERS, PROVIDER_ORDER);
+const HOSTED_PROVIDER_IDS = new Set(["anarlog"]);
+export const PROVIDERS: Provider[] = sortProviders(
+  _PROVIDERS.filter((provider) => !HOSTED_PROVIDER_IDS.has(provider.id)),
+  PROVIDER_ORDER,
+);
 export type ProviderId = (typeof _PROVIDERS)[number]["id"];

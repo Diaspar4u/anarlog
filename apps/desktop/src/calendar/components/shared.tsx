@@ -53,7 +53,10 @@ const _PROVIDERS = [
   },
 ] as const satisfies readonly CalendarProvider[];
 
-export const PROVIDERS = [..._PROVIDERS];
+const HOSTED_PROVIDER_IDS = new Set(["google", "outlook"]);
+export const PROVIDERS = _PROVIDERS.filter(
+  (provider) => !HOSTED_PROVIDER_IDS.has(provider.id),
+);
 
 const CALENDAR_NANGO_INTEGRATION_IDS = new Set<string>(
   PROVIDERS.flatMap((provider) =>
