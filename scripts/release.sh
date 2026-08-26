@@ -135,6 +135,7 @@ BUNDLE_DIR="$TAURI_ROOT/target/release/bundle/macos"
 rm -rf "$BUNDLE_DIR"
 
 log "Building updater-enabled Anarlog $VERSION"
+export CI="true"
 export RUSTC_WRAPPER=""
 export CARGO_BUILD_RUSTC_WRAPPER=""
 pnpm install --frozen-lockfile

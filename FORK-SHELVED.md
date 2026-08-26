@@ -1,6 +1,6 @@
 # Shelved fork work
 
-No retained fork behavior remains shelved for the private `1.4.13-ads.1` candidate.
+No retained fork behavior remains shelved for the `1.4.13-ads.2` release candidate.
 
 Deferred until Andrey accepts the candidate:
 
