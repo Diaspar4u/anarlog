@@ -119,7 +119,7 @@ if [[ "$PUBLISH" == '1' ]]; then
     git -C "$REPO_ROOT" fetch origin "$FEED_BRANCH"
     git -C "$REPO_ROOT" merge-base --is-ancestor "origin/$FEED_BRANCH" HEAD \
         || fail "Release commit is not a descendant of origin/$FEED_BRANCH"
-    [[ "$(env -u GITHUB_TOKEN -u GH_TOKEN HOME="$HOME" XDG_CONFIG_HOME= gh api user --jq .login)" == 'Diaspar4u' ]] \
+    [[ "$(gh api user --jq .login)" == 'Diaspar4u' ]] \
         || fail 'The established GitHub profile is not Diaspar4u'
 fi
 
@@ -188,7 +188,7 @@ DOWNLOAD_URL="$RELEASE_BASE_URL/$RELEASE_TAG/$ARCHIVE_NAME"
 if [[ "$PUBLISH" == '1' ]]; then
     log 'Publishing immutable GitHub Release asset'
     HEAD_SHA="$(git -C "$REPO_ROOT" rev-parse HEAD)"
-    env -u GITHUB_TOKEN -u GH_TOKEN HOME="$HOME" XDG_CONFIG_HOME= gh release create "$RELEASE_TAG" \
+    gh release create "$RELEASE_TAG" \
         "$ARCHIVE_PATH#$ARCHIVE_NAME" \
         --repo "$REPOSITORY" \
         --target "$HEAD_SHA" \
