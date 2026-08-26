@@ -19,7 +19,7 @@ RELEASE_BASE_URL="https://github.com/$REPOSITORY/releases/download"
 EXPECTED_BUNDLE_ID="com.hyprnote.stable"
 VERSION=""
 OUTPUT_DIR=""
-PUBLISH=0
+FINALIZE_PUBLISHED=0
 ALLOW_DIRTY=0
 PRE_METADATA_HEAD=""
 PUBLISHED_METADATA_HEAD=""
@@ -48,13 +48,13 @@ usage() {
         'Usage: scripts/release.sh --version <semver-ads.N> [options]' \
         '' \
         'Builds, Apple-signs, verifies, packages, and Tauri-signs Anarlog.' \
-        'With --publish, it uploads the immutable release asset, verifies it,' \
-        'publishes latest.json last, and verifies the public update channel.' \
+        'After browser release upload, --finalize-published verifies the public' \
+        'asset, publishes latest.json through SSH last, and verifies the channel.' \
         '' \
         'Options:' \
         '  --version <semver-ads.N>    Ordered revision on the pinned upstream version.' \
         '  --output-dir <directory>    Artifact directory.' \
-        '  --publish                   Publish release asset and latest.json.' \
+        '  --finalize-published        Verify browser upload and publish latest.json.' \
         '  --allow-dirty               Permit a prepare-only build from dirty source.' \
         '  -h, --help                  Show this help.'
 }
@@ -76,8 +76,8 @@ while [[ $# -gt 0 ]]; do
             OUTPUT_DIR="$2"
             shift 2
             ;;
-        --publish)
-            PUBLISH=1
+        --finalize-published)
+            FINALIZE_PUBLISHED=1
             shift
             ;;
         --allow-dirty)
@@ -96,10 +96,7 @@ done
 [[ -f "$STABLE_CONFIG" ]] || fail "Missing $STABLE_CONFIG"
 [[ -f "$STABLE_MACOS_CONFIG" ]] || fail "Missing $STABLE_MACOS_CONFIG"
 [[ -f "$ENTITLEMENTS" ]] || fail "Missing $ENTITLEMENTS"
-[[ -f "$UPDATER_KEY" ]] || fail "Missing Tauri updater key: $UPDATER_KEY"
-[[ "$(stat -f '%Lp' "$UPDATER_KEY")" == '600' ]] || fail 'Tauri updater key must be mode 0600'
-
-for command_name in cargo codesign curl ditto gh git jq plutil pnpm security shasum stat; do
+for command_name in cargo codesign curl ditto git jq plutil shasum stat; do
     require_command "$command_name"
 done
 
@@ -108,94 +105,98 @@ if [[ -z "$OUTPUT_DIR" ]]; then
 elif [[ "$OUTPUT_DIR" != /* ]]; then
     OUTPUT_DIR="$REPO_ROOT/$OUTPUT_DIR"
 fi
-[[ ! -e "$OUTPUT_DIR" ]] || fail "Output already exists: $OUTPUT_DIR"
+if [[ "$FINALIZE_PUBLISHED" == '1' ]]; then
+    [[ -d "$OUTPUT_DIR" ]] || fail "Prepared output does not exist: $OUTPUT_DIR"
+else
+    [[ ! -e "$OUTPUT_DIR" ]] || fail "Output already exists: $OUTPUT_DIR"
+fi
 
 if [[ "$ALLOW_DIRTY" == '0' && -n "$(git -C "$REPO_ROOT" status --porcelain)" ]]; then
     fail 'Git working tree is not clean. Commit/stash changes or pass --allow-dirty for a prepare-only build.'
 fi
-if [[ "$PUBLISH" == '1' ]]; then
-    [[ "$ALLOW_DIRTY" == '0' ]] || fail '--publish cannot be combined with --allow-dirty'
-    [[ "$(git -C "$REPO_ROOT" branch --show-current)" == "$FEED_BRANCH" ]] || fail "Publish requires branch $FEED_BRANCH"
+if [[ "$FINALIZE_PUBLISHED" == '1' ]]; then
+    [[ "$ALLOW_DIRTY" == '0' ]] || fail '--finalize-published cannot be combined with --allow-dirty'
+    [[ "$(git -C "$REPO_ROOT" branch --show-current)" == "$FEED_BRANCH" ]] || fail "Finalization requires branch $FEED_BRANCH"
     git -C "$REPO_ROOT" fetch origin "$FEED_BRANCH"
     git -C "$REPO_ROOT" merge-base --is-ancestor "origin/$FEED_BRANCH" HEAD \
         || fail "Release commit is not a descendant of origin/$FEED_BRANCH"
-    [[ "$(gh api user --jq .login)" == 'Diaspar4u' ]] \
-        || fail 'The established GitHub profile is not Diaspar4u'
 fi
-
-IDENTITY_SHA="$(security find-identity -v -p codesigning "$HOME/Library/Keychains/login.keychain-db" | awk -v identity="$SIGNING_IDENTITY" 'index($0, identity) {print $2; exit}')"
-[[ -n "$IDENTITY_SHA" ]] || fail "Signing identity unavailable: $SIGNING_IDENTITY"
-
-mkdir -p "$OUTPUT_DIR"
-OVERRIDE_CONFIG="$OUTPUT_DIR/tauri.release.json"
-jq -n --arg version "$VERSION" --arg identity "$SIGNING_IDENTITY" \
-    '{version: $version, bundle: {macOS: {signingIdentity: $identity}}}' > "$OVERRIDE_CONFIG"
-
-BUNDLE_DIR="$TAURI_ROOT/target/release/bundle/macos"
-rm -rf "$BUNDLE_DIR"
-
-log "Building updater-enabled Anarlog $VERSION"
-export CI="true"
-export RUSTC_WRAPPER=""
-export CARGO_BUILD_RUSTC_WRAPPER=""
-pnpm install --frozen-lockfile
-pnpm --filter @anlg/ui build
-(
-    cd "$DESKTOP_ROOT"
-    export APP_VERSION="$VERSION"
-    export VITE_APP_VERSION="$VERSION"
-    export VITE_API_URL="https://127.0.0.1"
-    export VITE_APP_URL="https://127.0.0.1"
-    export POSTHOG_API_KEY=""
-    export TAURI_SIGNING_PRIVATE_KEY="$(< "$UPDATER_KEY")"
-    export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
-    pnpm exec tauri build \
-        --config src-tauri/tauri.conf.stable.json \
-        --config src-tauri/tauri.conf.stable-macos.json \
-        --config "$OVERRIDE_CONFIG" \
-        --bundles app
-)
-
-APP_PATH="$BUNDLE_DIR/Anarlog.app"
-TAURI_ARCHIVE="$APP_PATH.tar.gz"
-TAURI_SIGNATURE="$TAURI_ARCHIVE.sig"
-[[ -d "$APP_PATH" ]] || fail 'Tauri application bundle was not produced'
-[[ -s "$TAURI_ARCHIVE" ]] || fail 'Tauri updater archive was not produced'
-[[ -s "$TAURI_SIGNATURE" ]] || fail 'Tauri updater signature was not produced'
-
-log 'Verifying Apple application signature and maintained updater configuration'
-codesign --verify --deep --strict --verbose=2 "$APP_PATH"
-INFO_PLIST="$APP_PATH/Contents/Info.plist"
-[[ "$(plist_value "$INFO_PLIST" CFBundleShortVersionString)" == "$VERSION" ]] || fail 'Built app version mismatch'
-[[ "$(plist_value "$INFO_PLIST" CFBundleIdentifier)" == "$EXPECTED_BUNDLE_ID" ]] || fail 'Built app bundle identifier mismatch'
-[[ "$(jq -r '.plugins.updater.active' "$STABLE_CONFIG")" == 'true' ]] || fail 'Maintained updater is not enabled'
-[[ "$(jq -r '.plugins.updater.endpoints[0]' "$STABLE_CONFIG")" == "$FEED_URL" ]] || fail 'Maintained updater endpoint mismatch'
-[[ -n "$(jq -r '.plugins.updater.pubkey // empty' "$STABLE_CONFIG")" ]] || fail 'Maintained updater public key is missing'
-
-log 'Verifying Tauri updater signature'
-cargo run --quiet -p updater-core --bin verify-updater-signature -- \
-    "$TAURI_ARCHIVE" "$TAURI_SIGNATURE" "$STABLE_CONFIG"
 
 SAFE_VERSION="$VERSION"
 ARCHIVE_NAME="Anarlog-$SAFE_VERSION-macos-aarch64.app.tar.gz"
 ARCHIVE_PATH="$OUTPUT_DIR/$ARCHIVE_NAME"
 SIGNATURE_PATH="$OUTPUT_DIR/$ARCHIVE_NAME.sig"
-ditto "$TAURI_ARCHIVE" "$ARCHIVE_PATH"
-ditto "$TAURI_SIGNATURE" "$SIGNATURE_PATH"
-ARCHIVE_SHA256="$(shasum -a 256 "$ARCHIVE_PATH" | awk '{print $1}')"
 RELEASE_TAG="anarlog-v$SAFE_VERSION"
 DOWNLOAD_URL="$RELEASE_BASE_URL/$RELEASE_TAG/$ARCHIVE_NAME"
 
-if [[ "$PUBLISH" == '1' ]]; then
-    log 'Publishing immutable GitHub Release asset'
-    HEAD_SHA="$(git -C "$REPO_ROOT" rev-parse HEAD)"
-    gh release create "$RELEASE_TAG" \
-        "$ARCHIVE_PATH#$ARCHIVE_NAME" \
-        --repo "$REPOSITORY" \
-        --target "$HEAD_SHA" \
-        --title "Anarlog $VERSION" \
-        --notes "Maintained Anarlog $VERSION"
+if [[ "$FINALIZE_PUBLISHED" == '0' ]]; then
+    require_command pnpm
+    require_command security
+    [[ -f "$UPDATER_KEY" ]] || fail "Missing Tauri updater key: $UPDATER_KEY"
+    [[ "$(stat -f '%Lp' "$UPDATER_KEY")" == '600' ]] || fail 'Tauri updater key must be mode 0600'
+    IDENTITY_SHA="$(security find-identity -v -p codesigning "$HOME/Library/Keychains/login.keychain-db" | awk -v identity="$SIGNING_IDENTITY" 'index($0, identity) {print $2; exit}')"
+    [[ -n "$IDENTITY_SHA" ]] || fail "Signing identity unavailable: $SIGNING_IDENTITY"
 
+    mkdir -p "$OUTPUT_DIR"
+    OVERRIDE_CONFIG="$OUTPUT_DIR/tauri.release.json"
+    jq -n --arg version "$VERSION" --arg identity "$SIGNING_IDENTITY" \
+        '{version: $version, bundle: {macOS: {signingIdentity: $identity}}}' > "$OVERRIDE_CONFIG"
+
+    BUNDLE_DIR="$TAURI_ROOT/target/release/bundle/macos"
+    rm -rf "$BUNDLE_DIR"
+
+    log "Building updater-enabled Anarlog $VERSION"
+    export CI="true"
+    export RUSTC_WRAPPER=""
+    export CARGO_BUILD_RUSTC_WRAPPER=""
+    pnpm install --frozen-lockfile
+    pnpm --filter @anlg/ui build
+    (
+        cd "$DESKTOP_ROOT"
+        export APP_VERSION="$VERSION"
+        export VITE_APP_VERSION="$VERSION"
+        export VITE_API_URL="https://127.0.0.1"
+        export VITE_APP_URL="https://127.0.0.1"
+        export POSTHOG_API_KEY=""
+        export TAURI_SIGNING_PRIVATE_KEY="$(< "$UPDATER_KEY")"
+        export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
+        pnpm exec tauri build \
+            --config src-tauri/tauri.conf.stable.json \
+            --config src-tauri/tauri.conf.stable-macos.json \
+            --config "$OVERRIDE_CONFIG" \
+            --bundles app
+    )
+
+    APP_PATH="$BUNDLE_DIR/Anarlog.app"
+    TAURI_ARCHIVE="$APP_PATH.tar.gz"
+    TAURI_SIGNATURE="$TAURI_ARCHIVE.sig"
+    [[ -d "$APP_PATH" ]] || fail 'Tauri application bundle was not produced'
+    [[ -s "$TAURI_ARCHIVE" ]] || fail 'Tauri updater archive was not produced'
+    [[ -s "$TAURI_SIGNATURE" ]] || fail 'Tauri updater signature was not produced'
+
+    log 'Verifying Apple application signature and maintained updater configuration'
+    codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+    INFO_PLIST="$APP_PATH/Contents/Info.plist"
+    [[ "$(plist_value "$INFO_PLIST" CFBundleShortVersionString)" == "$VERSION" ]] || fail 'Built app version mismatch'
+    [[ "$(plist_value "$INFO_PLIST" CFBundleIdentifier)" == "$EXPECTED_BUNDLE_ID" ]] || fail 'Built app bundle identifier mismatch'
+    [[ "$(jq -r '.plugins.updater.active' "$STABLE_CONFIG")" == 'true' ]] || fail 'Maintained updater is not enabled'
+    [[ "$(jq -r '.plugins.updater.endpoints[0]' "$STABLE_CONFIG")" == "$FEED_URL" ]] || fail 'Maintained updater endpoint mismatch'
+    [[ -n "$(jq -r '.plugins.updater.pubkey // empty' "$STABLE_CONFIG")" ]] || fail 'Maintained updater public key is missing'
+
+    log 'Verifying Tauri updater signature'
+    cargo run --quiet -p updater-core --bin verify-updater-signature -- \
+        "$TAURI_ARCHIVE" "$TAURI_SIGNATURE" "$STABLE_CONFIG"
+    ditto "$TAURI_ARCHIVE" "$ARCHIVE_PATH"
+    ditto "$TAURI_SIGNATURE" "$SIGNATURE_PATH"
+else
+    [[ -s "$ARCHIVE_PATH" ]] || fail "Prepared archive is missing: $ARCHIVE_PATH"
+    [[ -s "$SIGNATURE_PATH" ]] || fail "Prepared updater signature is missing: $SIGNATURE_PATH"
+fi
+
+ARCHIVE_SHA256="$(shasum -a 256 "$ARCHIVE_PATH" | awk '{print $1}')"
+
+if [[ "$FINALIZE_PUBLISHED" == '1' ]]; then
+    log 'Verifying browser-published immutable release asset'
     REMOTE_ARCHIVE="$OUTPUT_DIR/public-$ARCHIVE_NAME"
     curl --fail --location --retry 3 --output "$REMOTE_ARCHIVE" "$DOWNLOAD_URL"
     [[ "$(shasum -a 256 "$REMOTE_ARCHIVE" | awk '{print $1}')" == "$ARCHIVE_SHA256" ]] || fail 'Public archive hash mismatch'
@@ -246,8 +247,11 @@ fi
 
 printf '\nAnarlog release prepared successfully.\n'
 printf 'Version: %s\nArchive SHA-256: %s\n' "$VERSION" "$ARCHIVE_SHA256"
-if [[ "$PUBLISH" == '1' ]]; then
+if [[ "$FINALIZE_PUBLISHED" == '1' ]]; then
     printf 'Publication: public asset and signed latest.json verified\n'
 else
-    printf 'Publication: not requested\n'
+    printf 'Publication: prepared for authenticated browser upload\n'
+    printf 'Release URL: https://github.com/%s/releases/new\n' "$REPOSITORY"
+    printf 'Tag: %s\nTitle: Anarlog %s\nTarget: %s\nAsset: %s\n' \
+        "$RELEASE_TAG" "$VERSION" "$(git -C "$REPO_ROOT" rev-parse HEAD)" "$ARCHIVE_PATH"
 fi
