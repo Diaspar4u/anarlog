@@ -21,8 +21,7 @@ export function ClassicMainShellFrame() {
 
   const isOnboarding = currentTab?.type === "onboarding";
   const isChangelog = currentTab?.type === "changelog";
-  const showSyncStatus =
-    currentTab?.type === "empty" || currentTab?.type === "sessions";
+
   const hasCustomSidebar = hasCustomSidebarTab(currentTab);
   const hasLeftSurfaceCustomSidebar =
     hasLeftSurfaceCustomSidebarTab(currentTab);
@@ -41,7 +40,7 @@ export function ClassicMainShellFrame() {
       edgeToEdge={isOnboarding}
       mainSurfaceChrome={isOnboarding ? undefined : mainSurfaceChrome}
     >
-      <ClassicMainBodyHost showSyncStatus={showSyncStatus} />
+      <ClassicMainBodyHost />
       <ToastNotifications />
     </MainShellScaffold>
   );
@@ -55,14 +54,10 @@ export function ClassicMainShellFrame() {
   );
 }
 
-const ClassicMainBodyHost = memo(function ClassicMainBodyHost({
-  showSyncStatus,
-}: {
-  showSyncStatus: boolean;
-}) {
+const ClassicMainBodyHost = memo(function ClassicMainBodyHost() {
   return (
     <MainShellBodyFrame>
-      <ClassicMainBody showSyncStatus={showSyncStatus} />
+      <ClassicMainBody />
     </MainShellBodyFrame>
   );
 });

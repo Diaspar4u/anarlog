@@ -477,6 +477,7 @@ describe("OuterHeader", () => {
     );
 
     expect(screen.queryByRole("textbox", { name: "Session title" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Share note" })).toBeNull();
     expect(screen.getByRole("group", { name: "Session note views" })).not.toBe(
       null,
     );

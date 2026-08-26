@@ -232,8 +232,10 @@ export function sanitizeErrorEvent(event: ErrorEvent): ErrorEvent | null {
   return event;
 }
 
+const LOCAL_ERROR_REPORTING_ENABLED = false;
+
 export function initializeErrorReporting() {
-  if (!env.VITE_SENTRY_DSN) return;
+  if (!LOCAL_ERROR_REPORTING_ENABLED || !env.VITE_SENTRY_DSN) return;
 
   Sentry.init({
     dsn: env.VITE_SENTRY_DSN,

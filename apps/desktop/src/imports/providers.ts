@@ -23,7 +23,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     name: "Granola",
     access: "MCP",
     helpUrl: "https://docs.granola.ai/help-center/sharing/integrations/mcp",
-    directImport: "mcp-oauth",
     nativeNames: ["Granola"],
     bundleIds: ["com.granola.app", "com.getgranola.app"],
   },
@@ -33,7 +32,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     access: "MCP",
     helpUrl:
       "https://support.circleback.ai/en/articles/13249081-circleback-mcp",
-    directImport: "mcp-oauth",
     nativeNames: ["Circleback"],
   },
   {
@@ -41,7 +39,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     name: "Fireflies.ai",
     access: "MCP",
     helpUrl: "https://docs.fireflies.ai/mcp-tools/overview",
-    directImport: "mcp-oauth",
     nativeNames: ["Fireflies", "Fireflies.ai"],
   },
   {
@@ -49,7 +46,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     name: "Krisp",
     access: "MCP",
     helpUrl: "https://help.krisp.ai/hc/en-us/articles/25396920405148-Krisp-MCP",
-    directImport: "mcp-oauth",
     nativeNames: ["Krisp"],
     bundleIds: ["ai.krisp.krispMac"],
   },
@@ -58,7 +54,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     name: "Fathom",
     access: "OAuth",
     helpUrl: "https://developers.fathom.ai/sdks/oauth",
-    directImport: "nango-oauth",
     nangoIntegrationId: "fathom",
     nativeNames: ["Fathom"],
     bundleIds: ["Fathom"],
@@ -69,7 +64,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     access: "MCP",
     helpUrl:
       "https://support.read.ai/hc/en-us/articles/49379985941523-Read-AI-API-and-MCP-Overview",
-    directImport: "mcp-oauth",
     nativeNames: ["Read AI"],
   },
   {
@@ -77,7 +71,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     name: "Notion AI Meeting Notes",
     access: "OAuth",
     helpUrl: "https://developers.notion.com/reference/query-meeting-notes",
-    directImport: "nango-oauth",
     nangoIntegrationId: "notion",
     nativeNames: ["Notion"],
     bundleIds: ["notion.id", "notion"],
@@ -87,7 +80,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     name: "Fellow",
     access: "MCP",
     helpUrl: "https://help.fellow.ai/en/articles/12622641-fellow-s-mcp-server",
-    directImport: "mcp-oauth",
     nativeNames: ["Fellow"],
   },
   {
@@ -96,7 +88,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     access: "MCP",
     helpUrl:
       "https://help.tactiq.io/en/articles/14883619-connecting-tactiq-mcp-server",
-    directImport: "mcp-oauth",
   },
   {
     id: "grain",
@@ -151,7 +142,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     name: "Jiminny",
     access: "MCP",
     helpUrl: "https://help.jiminny.com/en/articles/15292810-jiminny-mcp",
-    directImport: "mcp-oauth",
     nativeNames: ["Jiminny", "Jiminny Sidekick"],
   },
   {
@@ -176,7 +166,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     name: "Pocket",
     access: "MCP",
     helpUrl: "https://docs.heypocketai.com/docs",
-    directImport: "mcp-oauth",
     nativeNames: ["Pocket", "Pocket Desktop", "Pocket AI"],
     bundleIds: ["com.openvisionengineering.pocket-desktop-app"],
   },
@@ -185,7 +174,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     name: "Zoom",
     access: "OAuth",
     helpUrl: "https://developers.zoom.us/docs/api/meetings/",
-    directImport: "nango-oauth",
     nangoIntegrationId: "zoom",
     nativeNames: ["zoom.us", "Zoom", "Zoom Workplace"],
     bundleIds: ["us.zoom.xos"],
@@ -196,7 +184,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     access: "OAuth",
     helpUrl:
       "https://learn.microsoft.com/en-us/graph/api/onlinemeeting-list-transcripts?view=graph-rest-1.0",
-    directImport: "nango-oauth",
     nangoIntegrationId: "microsoft-teams",
     nativeNames: ["Microsoft Teams", "Microsoft Teams (work or school)"],
     bundleIds: ["com.microsoft.teams", "com.microsoft.teams2"],
@@ -207,7 +194,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     access: "OAuth",
     helpUrl:
       "https://developers.google.com/workspace/meet/api/guides/artifacts",
-    directImport: "nango-oauth",
     nangoIntegrationId: "google-meet",
     nativeNames: ["Google Meet"],
     alwaysAvailable: true,
@@ -218,7 +204,6 @@ export const MEETING_IMPORT_PROVIDERS: MeetingImportProvider[] = [
     access: "OAuth",
     helpUrl:
       "https://developer.webex.com/meeting/docs/api/v1/meeting-transcripts",
-    directImport: "nango-oauth",
     nangoIntegrationId: "webex",
     nativeNames: ["Webex", "Cisco Webex Meetings"],
     bundleIds: ["com.cisco.webex", "com.webex"],

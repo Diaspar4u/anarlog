@@ -121,7 +121,7 @@ describe("ClassicMainShellFrame", () => {
     render(<ClassicMainShellFrame />);
 
     expect(screen.getByTestId("toast-notifications")).not.toBeNull();
-    expect(screen.getByTestId("sync-status-indicator")).not.toBeNull();
+    expect(screen.queryByTestId("sync-status-indicator")).toBeNull();
     expect(
       screen
         .getByTestId("main-shell-scaffold")
@@ -129,12 +129,12 @@ describe("ClassicMainShellFrame", () => {
     ).toBe("left");
   });
 
-  it("shows sync status in note views", () => {
+  it("keeps cloud sync status hidden in note views", () => {
     mocks.currentTab = { type: "sessions" };
 
     render(<ClassicMainShellFrame />);
 
-    expect(screen.getByTestId("sync-status-indicator")).not.toBeNull();
+    expect(screen.queryByTestId("sync-status-indicator")).toBeNull();
   });
 
   it("hides sync status outside empty and note views", () => {
