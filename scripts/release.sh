@@ -231,7 +231,7 @@ if [[ "$FINALIZE_PUBLISHED" == '1' ]]; then
 
     PUBLIC_METADATA="$OUTPUT_DIR/public-latest.json"
     for attempt in 1 2 3 4 5 6; do
-        PUBLIC_FEED_CHECK_URL="$FEED_URL?publication-check=$PUBLISHED_METADATA_HEAD-$attempt"
+        PUBLIC_FEED_CHECK_URL="https://raw.githubusercontent.com/$REPOSITORY/$PUBLISHED_METADATA_HEAD/latest.json"
         if curl --fail --location --header 'Cache-Control: no-cache' \
             --output "$PUBLIC_METADATA" "$PUBLIC_FEED_CHECK_URL" \
             && jq -e --arg version "$VERSION" --arg url "$DOWNLOAD_URL" \
@@ -239,7 +239,7 @@ if [[ "$FINALIZE_PUBLISHED" == '1' ]]; then
                 "$PUBLIC_METADATA" >/dev/null; then
             break
         fi
-        [[ "$attempt" != '6' ]] || fail 'Public latest.json did not converge to the published metadata'
+        [[ "$attempt" != '6' ]] || fail 'Published latest.json commit was not publicly readable'
         sleep 2
     done
     PUBLIC_SIGNATURE="$OUTPUT_DIR/public-signature.sig"
