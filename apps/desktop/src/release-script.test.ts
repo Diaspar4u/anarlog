@@ -13,5 +13,9 @@ describe("release script publication surface", () => {
     expect(releaseScript).toContain("--finalize-published");
     expect(releaseScript).toContain("Public archive hash mismatch");
     expect(releaseScript).toContain("Publishing latest.json last");
+    expect(releaseScript).toContain("Cache-Control: no-cache");
+    expect(releaseScript).toContain(
+      "publication-check=$PUBLISHED_METADATA_HEAD-$attempt",
+    );
   });
 });
