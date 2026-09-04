@@ -231,7 +231,9 @@ if [[ "$FINALIZE_PUBLISHED" == '1' ]]; then
 
     PUBLIC_METADATA="$OUTPUT_DIR/public-latest.json"
     for attempt in 1 2 3 4 5 6; do
-        if curl --fail --location --output "$PUBLIC_METADATA" "$FEED_URL" \
+        PUBLIC_FEED_CHECK_URL="$FEED_URL?publication-check=$PUBLISHED_METADATA_HEAD-$attempt"
+        if curl --fail --location --header 'Cache-Control: no-cache' \
+            --output "$PUBLIC_METADATA" "$PUBLIC_FEED_CHECK_URL" \
             && jq -e --arg version "$VERSION" --arg url "$DOWNLOAD_URL" \
                 '.version == $version and .platforms["darwin-aarch64"].url == $url and (.platforms["darwin-aarch64"].signature | length > 0)' \
                 "$PUBLIC_METADATA" >/dev/null; then
