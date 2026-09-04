@@ -33,10 +33,17 @@ vi.mock("~/calendar/queries", () => ({
   useCalendarRows: () => mocks.calendars,
 }));
 
-import { PROVIDERS } from "../shared";
+import type { CalendarProvider } from "../shared";
 import { useOAuthCalendarSelection } from "./calendar-selection";
 
-const GOOGLE_PROVIDER = PROVIDERS.find((provider) => provider.id === "google")!;
+const GOOGLE_PROVIDER: CalendarProvider = {
+  disabled: false,
+  id: "google",
+  displayName: "Google",
+  icon: null,
+  docsPath: "https://docs.anarlog.so/calendar#google-calendar",
+  nangoIntegrationId: "google-calendar",
+};
 
 function HookHarness() {
   useOAuthCalendarSelection(GOOGLE_PROVIDER);

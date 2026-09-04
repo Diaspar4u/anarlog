@@ -5,14 +5,14 @@ import { getCalendarConnectionKey } from "./components/shared";
 import { useSyncWhenCalendarConnectionsChange } from "./hooks";
 
 describe("getCalendarConnectionKey", () => {
-  it("ignores non-calendar integrations and orders connection ids", () => {
+  it("ignores hosted calendar integrations in the local fork", () => {
     expect(
       getCalendarConnectionKey([
         { connection_id: "outlook-2", integration_id: "outlook" },
         { connection_id: "slack-1", integration_id: "slack" },
         { connection_id: "google-1", integration_id: "google-calendar" },
       ]),
-    ).toBe("google-1,outlook-2");
+    ).toBe("");
   });
 
   it("treats a missing connection list as empty", () => {

@@ -4,7 +4,7 @@ import { upstreamChangelogVersion } from "./version";
 
 describe("upstreamChangelogVersion", () => {
   it("maps ordered downstream prereleases to their upstream core", () => {
-    expect(upstreamChangelogVersion("1.4.13-ads.1")).toBe("1.4.13");
+    expect(upstreamChangelogVersion("1.4.19-ads.1")).toBe("1.4.19");
     expect(upstreamChangelogVersion("1.4.13-ads.12")).toBe("1.4.13");
   });
 

@@ -73,7 +73,6 @@ vi.mock("./custom-sidebar-header", () => ({
   CustomSidebarHeader: () => <div />,
 }));
 
-
 vi.mock("~/store/zustand/tabs", () => {
   const getState = () => ({
     currentTab: mocks.currentTab,
@@ -136,11 +135,9 @@ describe("SettingsNav", () => {
       expect(screen.getByText(label)).toBeTruthy();
     });
 
-    ["Account", "Teams", "Automations", "Sync", "Privacy"].forEach(
-      (label) => {
-        expect(screen.queryByText(label)).toBeNull();
-      },
-    );
+    ["Account", "Teams", "Automations", "Sync", "Privacy"].forEach((label) => {
+      expect(screen.queryByText(label)).toBeNull();
+    });
   });
 
   it("places the AI section above Workspace", () => {
@@ -187,7 +184,6 @@ describe("SettingsNav", () => {
       },
     );
   });
-
 
   it("opens Appearance inside settings", () => {
     render(<SettingsNav />);
@@ -287,15 +283,11 @@ describe("SettingsNav", () => {
       target: { value: "workspace" },
     });
 
-    [
-      "Meetings",
-      "Folders",
-      "Calendar",
-      "Contacts",
-      "Templates",
-    ].forEach((label) => {
-      expect(screen.getByText(label)).toBeTruthy();
-    });
+    ["Meetings", "Folders", "Calendar", "Contacts", "Templates"].forEach(
+      (label) => {
+        expect(screen.getByText(label)).toBeTruthy();
+      },
+    );
     expect(screen.queryByText("Appearance")).toBeNull();
   });
 

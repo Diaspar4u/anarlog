@@ -104,6 +104,7 @@ describe("checkEventNotifications", () => {
         recurrence_series_id: "",
         title: "Design Review",
         is_all_day: 0,
+        meeting_link: "https://meet.example.com/design-review",
       },
     ]);
 

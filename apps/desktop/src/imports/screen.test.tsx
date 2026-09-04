@@ -200,28 +200,16 @@ describe("MeetingImportScreen", () => {
     expect(screen.queryByText("OAuth")).toBeNull();
     expect(screen.queryByText("Export help")).toBeNull();
     expect(
-      screen.getAllByRole("button", { name: "Connect & import" }),
-    ).toHaveLength(3);
-    expect(
-      screen.getAllByRole("button", { name: "Connect & import" })[0]?.className,
-    ).toContain("hover:bg-primary-foreground/10");
-    expect(
-      screen
-        .getAllByRole("button", { name: "Connect & import" })[0]
-        ?.closest('[role="group"]')?.parentElement?.className,
-    ).toContain("focus-within:ring-[3px]");
-    expect(screen.getAllByRole("button", { name: "Use files" })).toHaveLength(
-      3,
+      screen.queryAllByRole("button", { name: "Connect & import" }),
+    ).toHaveLength(0);
+    expect(screen.queryAllByRole("button", { name: "Use files" })).toHaveLength(
+      0,
     );
     expect(
-      screen.getAllByRole("button", { name: "Use files" })[0]?.className,
-    ).toContain("hover:bg-primary-foreground/10");
-    expect(screen.queryByRole("menuitem", { name: "Use files" })).toBeNull();
-    expect(
       screen.getAllByRole("button", { name: "Choose files" }),
-    ).toHaveLength(2);
+    ).toHaveLength(5);
     expect(
-      screen.getAllByText(/keep new meetings coming in while you switch/i),
+      screen.getAllByText(/Direct connection is not available yet/i),
     ).toHaveLength(3);
     expect(
       container.querySelectorAll('img[src^="data:image/png;base64,"]'),
@@ -289,39 +277,33 @@ describe("MeetingImportScreen", () => {
     expect(container.querySelector("iconify-icon")).toBeNull();
   });
 
-  it("offers file import from the connected provider menu", async () => {
+  it("offers direct file import for hosted providers", async () => {
     mockDetected(["granola"]);
 
     renderImports();
 
-    const trigger = await screen.findByRole("button", {
-      name: "Use files",
-    });
-    fireEvent.pointerDown(trigger);
-
     expect(
-      await screen.findByRole("menuitem", { name: "Use files" }),
+      await screen.findByRole("button", { name: "Choose files" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Connect & import" }),
+    ).toBeNull();
+    expect(
+      screen.getByText(/Direct connection is not available yet/i),
     ).toBeTruthy();
   });
 
-  it("prompts signed-out users to sign in before connecting", async () => {
+  it("does not require sign-in for file-only imports", async () => {
     mocks.signedIn = false;
     mockDetected(["granola"]);
 
     renderImports();
 
-    const signInButton = await screen.findByRole("button", {
-      name: "Sign in to connect",
-    });
-    expect(screen.getByText("Connect & import")).toBeTruthy();
-    expect(screen.getAllByText("Sign in to connect")).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "Use files" })).toBeTruthy();
-
-    fireEvent.click(signInButton);
-
-    await waitFor(() => {
-      expect(mocks.signIn).toHaveBeenCalledOnce();
-    });
+    expect(
+      await screen.findByRole("button", { name: "Choose files" }),
+    ).toBeTruthy();
+    expect(screen.queryByText("Sign in to connect")).toBeNull();
+    expect(mocks.signIn).not.toHaveBeenCalled();
     expect(mocks.connectConnectedImport).not.toHaveBeenCalled();
   });
 
@@ -334,11 +316,11 @@ describe("MeetingImportScreen", () => {
     expect(screen.getByText("Slack Huddles")).toBeTruthy();
     expect(screen.queryByText("Circleback")).toBeNull();
     expect(
-      screen.getAllByRole("button", { name: "Connect & import" }),
-    ).toHaveLength(1);
+      screen.queryAllByRole("button", { name: "Connect & import" }),
+    ).toHaveLength(0);
     expect(
       screen.getAllByRole("button", { name: "Choose files" }),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
 
     const list = container.querySelector(".rounded-2xl");
     expect(list).toBeTruthy();
@@ -361,59 +343,21 @@ describe("MeetingImportScreen", () => {
     expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
   });
 
-  it("lets the user cancel an abandoned browser connection and retry", async () => {
-    mockDetected(["granola"]);
-    mocks.connectConnectedImport.mockImplementation(
-      (_provider: unknown, signal: AbortSignal) =>
-        new Promise((_, reject) => {
-          signal.addEventListener("abort", () => reject(signal.reason), {
-            once: true,
-          });
-        }),
-    );
-
-    renderImports();
-
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Connect & import" }),
-    );
-    const cancelButton = await screen.findByRole("button", { name: "Cancel" });
-    fireEvent.click(cancelButton);
-
-    await waitFor(() => {
-      expect(mocks.cancelConnectedImport.mock.calls[0]?.[0]).toBe("granola");
-      expect(
-        screen
-          .getByRole("button", { name: "Connect & import" })
-          .hasAttribute("disabled"),
-      ).toBe(false);
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Connect & import" }));
-    await waitFor(() => {
-      expect(mocks.connectConnectedImport).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  it("connects Zoom through Nango OAuth instead of file-only import", async () => {
+  it("keeps hosted Zoom import file-only", async () => {
     mockDetected(["zoom"]);
 
     renderImports();
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Connect & import" }),
-    );
-
-    await waitFor(() => {
-      expect(mocks.connectNangoImport).toHaveBeenCalledOnce();
-    });
-    expect(mocks.connectConnectedImport).not.toHaveBeenCalled();
     expect(
-      screen.getByText(/keep new meetings coming in while you switch/i),
+      await screen.findByRole("button", { name: "Choose files" }),
     ).toBeTruthy();
     expect(
-      screen.queryByText(/Direct connection is not available yet/i),
+      screen.queryByRole("button", { name: "Connect & import" }),
     ).toBeNull();
+    expect(mocks.connectNangoImport).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(/Direct connection is not available yet/i),
+    ).toBeTruthy();
   });
 
   it("connects Plaud by running the local CLI instead of file-only import", async () => {
@@ -444,28 +388,20 @@ describe("MeetingImportScreen", () => {
     ).toBeNull();
   });
 
-  it("connects Pocket through MCP OAuth instead of file-only import", async () => {
+  it("keeps hosted Pocket import file-only", async () => {
     mockDetected(["pocket"]);
-    mocks.connectConnectedImport.mockResolvedValue({
-      providerId: "pocket",
-      clientId: "pocket-client",
-      tokenJson: "{}",
-    });
 
     renderImports();
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Connect & import" }),
-    );
-
-    await waitFor(() => {
-      expect(mocks.connectConnectedImport).toHaveBeenCalledOnce();
-    });
-    expect(mocks.connectNangoImport).not.toHaveBeenCalled();
     expect(
-      screen.getByText(
-        /Connected · New meetings are imported automatically while Anarlog is running/i,
-      ),
+      await screen.findByRole("button", { name: "Choose files" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Connect & import" }),
+    ).toBeNull();
+    expect(mocks.connectConnectedImport).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(/Direct connection is not available yet/i),
     ).toBeTruthy();
   });
 

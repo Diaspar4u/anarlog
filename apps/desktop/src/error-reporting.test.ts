@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   clearBreadcrumbs: vi.fn(),
   emit: vi.fn(),
   getClient: vi.fn(),
+  init: vi.fn(),
   isCrashReportingEnabled: vi.fn(),
   listener: undefined as
     | undefined
@@ -24,7 +25,7 @@ vi.mock("@sentry/react", () => ({
   getClient: mocks.getClient,
   getCurrentScope: () => ({ clearBreadcrumbs: mocks.clearBreadcrumbs }),
   getReplay: () => ({ start: mocks.startReplay }),
-  init: vi.fn(),
+  init: mocks.init,
   replayIntegration: mocks.replayIntegration,
   setUser: vi.fn(),
   withScope: mocks.withScope,

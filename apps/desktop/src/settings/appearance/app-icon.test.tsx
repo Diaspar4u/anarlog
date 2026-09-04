@@ -32,7 +32,6 @@ vi.mock("~/settings/queries", () => ({
   useSetSettingValue: () => mocks.setAppIcon,
 }));
 
-
 vi.mock("~/shared/config", () => ({
   useConfigValue: (key: string) =>
     key === "theme" ? mocks.theme : mocks.appIcon,

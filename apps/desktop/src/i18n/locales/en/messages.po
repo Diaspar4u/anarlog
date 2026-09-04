@@ -165,7 +165,6 @@ msgstr "Accessibility"
 
 #: src/onboarding/index.tsx
 #: src/settings/general/account.tsx
-#: src/sidebar/settings.tsx
 msgid "Account"
 msgstr "Account"
 
@@ -239,10 +238,6 @@ msgstr "Add another account"
 #: src/settings/sync/index.tsx
 msgid "Add another device"
 msgstr "Add another device"
-
-#: src/session/components/note-input/enhanced/config-error.tsx
-msgid "Add API key"
-msgstr "Add API key"
 
 #: src/settings/automations/workflow-builder.tsx
 msgid "Add at least one configured action before enabling."
@@ -324,6 +319,10 @@ msgstr "Add step"
 #: src/settings/developers/webhooks.tsx
 msgid "Add webhook"
 msgstr "Add webhook"
+
+#: src/session/components/note-input/enhanced/config-error.tsx
+msgid "Add your own LLM provider to generate a summary from this transcript."
+msgstr "Add your own LLM provider to generate a summary from this transcript."
 
 #: src/settings/general/spoken-languages.tsx
 msgid "Additional spoken languages"
@@ -678,7 +677,6 @@ msgid "Automation removed"
 msgstr "Automation removed"
 
 #: src/settings/automations/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Automations"
 msgstr "Automations"
 
@@ -1200,6 +1198,7 @@ msgid "Composer"
 msgstr "Composer"
 
 #: src/session/components/floating/options-menu.tsx
+#: src/session/components/note-input/enhanced/config-error.tsx
 msgid "Configure"
 msgstr "Configure"
 
@@ -2170,10 +2169,6 @@ msgstr "Generating title..."
 #: src/session/components/note-input/transcript/screens/empty.tsx
 msgid "Generating transcript..."
 msgstr "Generating transcript..."
-
-#: src/session/components/note-input/enhanced/config-error.tsx
-msgid "Get Pro"
-msgstr "Get Pro"
 
 #: src/onboarding/account/before-login.tsx
 #: src/settings/general/account.tsx
@@ -3790,10 +3785,6 @@ msgstr "Require Touch ID or your password when opening Anarlog."
 msgid "Require Windows Hello face, PIN, or password when opening Anarlog."
 msgstr "Require Windows Hello face, PIN, or password when opening Anarlog."
 
-#: src/sidebar/settings.tsx
-msgid "Requires Anarlog Pro"
-msgstr "Requires Anarlog Pro"
-
 #: src/settings/team/index.tsx
 msgid "Resend invitation"
 msgstr "Resend invitation"
@@ -4511,10 +4502,6 @@ msgstr "SQLite migration verification is incomplete"
 msgid "Stack another destination. Steps run top to bottom."
 msgstr "Stack another destination. Steps run top to bottom."
 
-#: src/session/components/note-input/enhanced/config-error.tsx
-msgid "Start a Pro trial or add your own LLM API key to generate a summary from this transcript."
-msgstr "Start a Pro trial or add your own LLM API key to generate a summary from this transcript."
-
 #: src/settings/general/app-settings.tsx
 msgid "Start Anarlog at login"
 msgstr "Start Anarlog at login"
@@ -4690,7 +4677,6 @@ msgid "Symbols"
 msgstr "Symbols"
 
 #: src/settings/sync/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Sync"
 msgstr "Sync"
 
@@ -4783,7 +4769,6 @@ msgid "teammate@company.com"
 msgstr "teammate@company.com"
 
 #: src/settings/team/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Teams"
 msgstr "Teams"
 
