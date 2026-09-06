@@ -1,9 +1,11 @@
 {
   "plugins": {
     "updater": {
+      "active": true,
       "endpoints": [
-        "https://desktop.anarlog.so/update/{{target}}-{{arch}}/{{current_version}}?channel=stable"
-      ]
+        "https://raw.githubusercontent.com/Diaspar4u/anarlog/andrey/anarlog-v1.4.8/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENDQkU5Qzc4ODJFNUMwODMKUldTRHdPV0NlSnkrelBrMThoZDlCYm82bDRNY2FwK1Voa0FyMFNHcG9hQlkrTGRyR2I2MnlJTzkK"
     }
   }
 }

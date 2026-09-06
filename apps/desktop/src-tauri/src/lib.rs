@@ -173,7 +173,7 @@ pub fn main() {
         let dsn = if std::env::var_os("ANARLOG_DISABLE_SENTRY").is_some() {
             None
         } else {
-            option_env!("SENTRY_DSN")
+            None::<&str>
         };
 
         if let Some(dsn) = dsn {

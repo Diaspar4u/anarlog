@@ -119,7 +119,7 @@ describe("MeetingImportSync", () => {
     ).toBe(true);
   });
 
-  it("syncs Zoom after a Nango connection is ready", () => {
+  it("does not sync hosted Zoom imports", () => {
     mocks.signedIn = true;
     mocks.connections = [
       {
@@ -131,11 +131,6 @@ describe("MeetingImportSync", () => {
 
     render(<MeetingImportSync />);
 
-    expect(mocks.nangoImportSyncQueryOptions).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "zoom" }),
-      "zoom-1",
-      { Authorization: "Bearer test" },
-      true,
-    );
+    expect(mocks.nangoImportSyncQueryOptions).not.toHaveBeenCalled();
   });
 });

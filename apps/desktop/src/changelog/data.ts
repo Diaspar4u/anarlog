@@ -4,10 +4,18 @@ import { latestContent, latestVersion } from "virtual:changelog";
 
 import { processContent } from "@anlg/changelog";
 
+import { getForkChangelog } from "./fork";
+import { upstreamChangelogVersion } from "./version";
+
+export function getLatestVersion(): string | null {
+  return latestVersion;
+}
+
 async function fetchChangelogFromGitHub(
   version: string,
 ): Promise<string | null> {
-  const url = `https://raw.githubusercontent.com/fastrepl/anarlog/main/packages/changelog/content/${version}.md`;
+  const upstreamVersion = upstreamChangelogVersion(version);
+  const url = `https://raw.githubusercontent.com/fastrepl/anarlog/main/packages/changelog/content/${upstreamVersion}.md`;
   try {
     const response = await fetch(url);
     if (!response.ok) {
@@ -28,6 +36,16 @@ export function useChangelogContent(version: string) {
     let cancelled = false;
 
     async function loadChangelog() {
+      const forkContent = getForkChangelog(version);
+      if (forkContent) {
+        const { content: parsed, date: parsedDate } =
+          processContent(forkContent);
+        setContent(parsed);
+        setDate(parsedDate);
+        setLoading(false);
+        return;
+      }
+
       if (version === latestVersion && latestContent) {
         const { content: parsed, date: parsedDate } =
           processContent(latestContent);

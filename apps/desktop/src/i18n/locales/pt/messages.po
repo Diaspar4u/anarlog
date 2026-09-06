@@ -187,7 +187,6 @@ msgstr ""
 
 #: src/onboarding/index.tsx
 #: src/settings/general/account.tsx
-#: src/sidebar/settings.tsx
 msgid "Account"
 msgstr ""
 
@@ -275,10 +274,6 @@ msgstr ""
 msgid "Add another device"
 msgstr ""
 
-#: src/session/components/note-input/enhanced/config-error.tsx
-msgid "Add API key"
-msgstr ""
-
 #: src/settings/automations/workflow-builder.tsx
 msgid "Add at least one configured action before enabling."
 msgstr ""
@@ -358,6 +353,10 @@ msgstr ""
 
 #: src/settings/developers/webhooks.tsx
 msgid "Add webhook"
+msgstr ""
+
+#: src/session/components/note-input/enhanced/config-error.tsx
+msgid "Add your own LLM provider to generate a summary from this transcript."
 msgstr ""
 
 #: src/settings/general/spoken-languages.tsx
@@ -725,7 +724,6 @@ msgid "Automation removed"
 msgstr ""
 
 #: src/settings/automations/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Automations"
 msgstr ""
 
@@ -1291,6 +1289,7 @@ msgid "Composer"
 msgstr ""
 
 #: src/session/components/floating/options-menu.tsx
+#: src/session/components/note-input/enhanced/config-error.tsx
 msgid "Configure"
 msgstr ""
 
@@ -2295,10 +2294,6 @@ msgstr ""
 
 #: src/session/components/note-input/transcript/screens/empty.tsx
 msgid "Generating transcript..."
-msgstr ""
-
-#: src/session/components/note-input/enhanced/config-error.tsx
-msgid "Get Pro"
 msgstr ""
 
 #: src/onboarding/account/before-login.tsx
@@ -3997,10 +3992,6 @@ msgstr ""
 msgid "Require Windows Hello face, PIN, or password when opening Anarlog."
 msgstr ""
 
-#: src/sidebar/settings.tsx
-msgid "Requires Anarlog Pro"
-msgstr ""
-
 #: src/settings/team/index.tsx
 msgid "Resend invitation"
 msgstr ""
@@ -4760,10 +4751,6 @@ msgstr ""
 msgid "Stack another destination. Steps run top to bottom."
 msgstr ""
 
-#: src/session/components/note-input/enhanced/config-error.tsx
-msgid "Start a Pro trial or add your own LLM API key to generate a summary from this transcript."
-msgstr ""
-
 #: src/settings/general/app-settings.tsx
 msgid "Start Anarlog at login"
 msgstr "Iniciar Anarlog ao entrar"
@@ -4955,7 +4942,6 @@ msgid "Symbols"
 msgstr ""
 
 #: src/settings/sync/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Sync"
 msgstr ""
 
@@ -5060,7 +5046,6 @@ msgid "teammate@company.com"
 msgstr ""
 
 #: src/settings/team/index.tsx
-#: src/sidebar/settings.tsx
 msgid "Teams"
 msgstr ""
 
