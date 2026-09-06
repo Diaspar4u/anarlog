@@ -160,6 +160,7 @@ function BillingProbe() {
   return (
     <div
       data-is-paid={billing.isPaid ? "true" : "false"}
+      data-is-pro={billing.isPro ? "true" : "false"}
       data-is-ready={billing.isReady ? "true" : "false"}
       data-testid="billing-access"
     />
@@ -260,7 +261,7 @@ describe("BillingProvider", () => {
     vi.unstubAllGlobals();
   });
 
-  it("opens the trial-ended modal after a failed eligibility refresh", async () => {
+  it("keeps billing dialogs out of the local fork", async () => {
     refreshSession.mockResolvedValue(null);
 
     renderBillingProvider();
@@ -269,10 +270,18 @@ describe("BillingProvider", () => {
       expect(refreshSession).toHaveBeenCalledTimes(1);
     });
 
+    expect(screen.queryByTestId("trial-started-dialog")).toBeNull();
+    expect(screen.queryByTestId("trial-payment-reminder-dialog")).toBeNull();
+    expect(screen.queryByTestId("trial-ended-dialog")).toBeNull();
+  });
+
+  it("unlocks local Pro features without granting paid cloud access", async () => {
+    renderBillingProvider();
+
     await waitFor(() => {
-      expect(
-        screen.getByTestId("trial-ended-dialog").getAttribute("data-open"),
-      ).toBe("true");
+      const access = screen.getByTestId("billing-access");
+      expect(access.getAttribute("data-is-paid")).toBe("false");
+      expect(access.getAttribute("data-is-pro")).toBe("true");
     });
   });
 
@@ -447,7 +456,7 @@ describe("BillingProvider", () => {
     switchedClaims.resolve(paidClaims("user-2"));
   });
 
-  it("opens a payment reminder during the final seven trial days", async () => {
+  it("does not mount payment reminders during the final seven trial days", async () => {
     vi.mocked(localStorage.getItem).mockImplementation((key: string) =>
       key.startsWith("anarlog:trial_started_seen:") ? "1" : null,
     );
@@ -465,11 +474,8 @@ describe("BillingProvider", () => {
 
     renderBillingProvider();
 
-    await waitFor(() => {
-      const reminder = screen.getByTestId("trial-payment-reminder-dialog");
-      expect(reminder.getAttribute("data-open")).toBe("true");
-      expect(reminder.getAttribute("data-days-remaining")).toBe("6");
-    });
+    await waitFor(() => expect(authCommands.decodeClaims).toHaveBeenCalled());
+    expect(screen.queryByTestId("trial-payment-reminder-dialog")).toBeNull();
   });
 
   it("does not remind trial users who already added a payment method", async () => {
@@ -490,13 +496,8 @@ describe("BillingProvider", () => {
 
     renderBillingProvider();
 
-    await waitFor(() => {
-      expect(
-        screen
-          .getByTestId("trial-payment-reminder-dialog")
-          .getAttribute("data-open"),
-      ).toBe("false");
-    });
+    await waitFor(() => expect(authCommands.decodeClaims).toHaveBeenCalled());
+    expect(screen.queryByTestId("trial-payment-reminder-dialog")).toBeNull();
   });
 
   it.each(["windows", "linux"])(

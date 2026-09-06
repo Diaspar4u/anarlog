@@ -80,7 +80,7 @@ describe("sidebar toast registry", () => {
     expect(toast?.lifecycle).toEqual({ type: "condition-bound" });
   });
 
-  it("suggests signing in before provider setup", () => {
+  it("keeps sign-in promotion hidden before provider setup", () => {
     const toast = getToastToShow(
       createToastRegistry({
         ...baseParams,
@@ -91,9 +91,8 @@ describe("sidebar toast registry", () => {
       () => false,
     );
 
-    expect(toast?.id).toBe("sign-in-benefits");
-    expect(toast?.description).toBe("Sign in to get the most out of Anarlog");
-    expect(toast?.primaryAction?.label).toBe("Sign in");
+    expect(toast?.id).toBe("missing-stt");
+    expect(toast?.description).toBe("Transcription provider needed");
   });
 
   it("asks for a usable transcription provider after sign-in is dismissed", () => {
@@ -162,7 +161,7 @@ describe("sidebar toast registry", () => {
     expect(toast?.description).toBe("Starting transcription...");
   });
 
-  it("renders the pro upgrade toast without an icon", () => {
+  it("keeps the pro upgrade toast hidden", () => {
     const toast = getToastToShow(
       createToastRegistry({
         ...baseParams,
@@ -170,17 +169,7 @@ describe("sidebar toast registry", () => {
       }),
       (toast) => toast.id === "sign-in-benefits",
     );
-    const previewToast = createDevtoolsToastPreview({
-      preview: "pro",
-      onSignIn: vi.fn(),
-      onOpenLLMSettings: vi.fn(),
-      onOpenSTTSettings: vi.fn(),
-    });
-
-    expect(toast?.id).toBe("upgrade-to-pro");
-    expect(toast?.description).toBe("Pro features available");
-    expect(toast?.icon).toBeUndefined();
-    expect(previewToast.icon).toBeUndefined();
+    expect(toast).toBeNull();
   });
 
   it("uses one permanent dismissal for sign-in and Pro promotions", () => {

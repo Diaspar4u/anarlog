@@ -18,8 +18,8 @@ export function ConfigError() {
         </p>
         <p className="text-muted-foreground text-sm leading-relaxed">
           <Trans>
-            Start a Pro trial or add your own LLM API key to generate a summary
-            from this transcript.
+            Add your own LLM provider to generate a summary from this
+            transcript.
           </Trans>
         </p>
       </div>
@@ -27,19 +27,10 @@ export function ConfigError() {
         <Button
           className="shadow-none"
           onClick={() =>
-            openNew({ type: "settings", state: { tab: "account" } })
-          }
-        >
-          <Trans>Get Pro</Trans>
-        </Button>
-        <Button
-          variant="outline"
-          className="shadow-none"
-          onClick={() =>
             openNew({ type: "settings", state: { tab: "intelligence" } })
           }
         >
-          <Trans>Add API key</Trans>
+          <Trans>Configure</Trans>
         </Button>
       </div>
     </div>

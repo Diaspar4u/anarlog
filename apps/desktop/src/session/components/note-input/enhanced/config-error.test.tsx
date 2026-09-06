@@ -16,25 +16,20 @@ describe("ConfigError", () => {
     openNew.mockReset();
   });
 
-  it("offers Pro and API key setup from the empty summary state", () => {
+  it("offers local provider setup from the empty summary state", () => {
     render(<ConfigError />);
 
     expect(screen.getByRole("alert")).not.toBeNull();
     expect(screen.getByText("Set up AI summaries")).not.toBeNull();
     expect(
       screen.getByText(
-        "Start a Pro trial or add your own LLM API key to generate a summary from this transcript.",
+        "Add your own LLM provider to generate a summary from this transcript.",
       ),
     ).not.toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Get Pro" }));
-    expect(openNew).toHaveBeenNthCalledWith(1, {
-      type: "settings",
-      state: { tab: "account" },
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Add API key" }));
-    expect(openNew).toHaveBeenNthCalledWith(2, {
+    expect(screen.queryByRole("button", { name: "Get Pro" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Configure" }));
+    expect(openNew).toHaveBeenCalledWith({
       type: "settings",
       state: { tab: "intelligence" },
     });

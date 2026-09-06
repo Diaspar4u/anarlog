@@ -1,0 +1,11 @@
+{
+  "version": "1.4.13-ads.2",
+  "notes": "Maintained Anarlog 1.4.13-ads.2",
+  "pub_date": "2026-08-26T17:31:03Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTRHdPV0NlSnkrektRTE9tNmhRY3BNU1o1K1dEaHF0T25NN01zWFdyMzc4NWVjaHhyZ1pqUlozamVMU1kzN2pPMzBRMDVjV2l4OFI4UXhqSWE4Z2FIMjFzdnJpd0M4M0FZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg3NzQ4NjA1CWZpbGU6QW5hcmxvZy5hcHAudGFyLmd6CjFlMWxBTzBHWkFzRFk2eVBHZE9xSCs1Z1R1MzhPMXFjb2NNYWNyUXVkenRoWDI3eDNENzhXaHorcnNjZ1E4bW5WY3ZRZEh6V2c0ZnQ3RE9BeGdqQkFnPT0K",
+      "url": "https://github.com/Diaspar4u/anarlog/releases/download/anarlog-v1.4.13-ads.2/Anarlog-1.4.13-ads.2-macos-aarch64.app.tar.gz"
+    }
+  }
+}

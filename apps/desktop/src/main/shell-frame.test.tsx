@@ -191,11 +191,28 @@ describe("ClassicMainShellFrame", () => {
     render(<ClassicMainShellFrame />);
 
     expect(screen.getByTestId("toast-notifications")).not.toBeNull();
+    expect(screen.queryByTestId("sync-status-indicator")).toBeNull();
     expect(
       screen
         .getByTestId("main-shell-scaffold")
         .getAttribute("data-main-surface-chrome"),
     ).toBe("left");
+  });
+
+  it("keeps cloud sync status hidden in note views", () => {
+    mocks.currentTab = { type: "sessions" };
+
+    render(<ClassicMainShellFrame />);
+
+    expect(screen.queryByTestId("sync-status-indicator")).toBeNull();
+  });
+
+  it("hides sync status outside empty and note views", () => {
+    mocks.currentTab = { type: "settings" };
+
+    render(<ClassicMainShellFrame />);
+
+    expect(screen.queryByTestId("sync-status-indicator")).toBeNull();
   });
 
   it("uses borderless top-edge main surface chrome while the sidebar timeline is collapsed", () => {
