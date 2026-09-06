@@ -209,7 +209,6 @@ describe("SettingsNav", () => {
   });
 
   it("opens personal stats for free users", () => {
-    mocks.isPro = false;
     render(<SettingsNav />);
     fireEvent.click(screen.getByRole("button", { name: "Stats" }));
     expect(mocks.updateSettingsTabState).toHaveBeenCalledWith(
