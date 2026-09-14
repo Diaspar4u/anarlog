@@ -155,7 +155,7 @@ describe("syncEvents", () => {
     expect(result.toAdd).toEqual([]);
   });
 
-  test("keeps one durable row for an exact visible Apple occurrence", () => {
+  test("keeps the first existing row for an exact visible Apple occurrence", () => {
     const result = syncEvents(
       createMockCtx(),
       syncInput({
@@ -170,7 +170,7 @@ describe("syncEvents", () => {
         ],
         existing: [
           createExistingEvent({
-            id: "event-with-session",
+            id: "event-keeper",
             tracking_id_event: "old-series:2024-01-15",
             recurrence_series_id: "old-series",
             has_recurrence_rules: true,
@@ -190,7 +190,7 @@ describe("syncEvents", () => {
 
     expect(result.toUpdate).toHaveLength(1);
     expect(result.toUpdate[0]).toMatchObject({
-      id: "event-with-session",
+      id: "event-keeper",
       tracking_id_event: "current-series:2024-01-15",
       title: "Team planning",
     });
@@ -315,6 +315,26 @@ describe("syncEvents", () => {
     );
 
     expect(result.toAdd).toHaveLength(2);
+  });
+
+  test("coalesces untitled Apple occurrences with the same exact times", () => {
+    const result = syncEvents(
+      createMockCtx(),
+      syncInput({
+        incoming: [
+          createIncomingEvent({
+            tracking_id_event: "untitled-old",
+            title: "   ",
+          }),
+          createIncomingEvent({
+            tracking_id_event: "untitled-new",
+            title: "",
+          }),
+        ],
+      }),
+    );
+
+    expect(result.toAdd).toHaveLength(1);
   });
 
   describe("removed calendar cleanup", () => {
