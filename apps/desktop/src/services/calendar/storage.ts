@@ -481,7 +481,34 @@ export async function loadSessionsForTrackingIds(
           ) AS is_all_day
         FROM sessions AS session
         LEFT JOIN events AS event
-          ON event.id = session.event_id
+          ON event.id = COALESCE(
+            NULLIF(session.event_id, ''),
+            (
+              SELECT candidate.id
+              FROM events AS candidate
+              WHERE candidate.tracking_id_event = COALESCE(
+                CASE
+                  WHEN json_valid(session.event_json)
+                  THEN NULLIF(
+                    CAST(json_extract(session.event_json, '$.tracking_id') AS TEXT),
+                    ''
+                  )
+                  ELSE NULL
+                END,
+                NULLIF(session.external_event_id, '')
+              )
+                AND candidate.calendar_id = CASE
+                  WHEN json_valid(session.event_json)
+                  THEN NULLIF(
+                    CAST(json_extract(session.event_json, '$.calendar_id') AS TEXT),
+                    ''
+                  )
+                  ELSE NULL
+                END
+              ORDER BY candidate.deleted_at IS NOT NULL, candidate.created_at, candidate.id
+              LIMIT 1
+            )
+          )
         WHERE session.deleted_at IS NULL
       ) AS session_with_event
       WHERE tracking_id IN (${placeholders(ids.length)})

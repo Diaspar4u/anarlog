@@ -216,8 +216,22 @@ describe("calendar SQLite storage", () => {
         isAllDay: false,
       },
     ]);
+    expect(mocks.execute.mock.calls[0][0]).toContain("NULLIF(event.title, '')");
     expect(mocks.execute.mock.calls[0][0]).toContain(
-      "ON event.id = session.event_id",
+      "NULLIF(event.started_at, '')",
+    );
+    expect(mocks.execute.mock.calls[0][0]).toContain(
+      "NULLIF(event.ended_at, '')",
+    );
+    expect(mocks.execute.mock.calls[0][0]).toContain("event.is_all_day");
+    expect(mocks.execute.mock.calls[0][0]).toContain(
+      "candidate.tracking_id_event = COALESCE",
+    );
+    expect(mocks.execute.mock.calls[0][0]).toContain(
+      "candidate.calendar_id = CASE",
+    );
+    expect(mocks.execute.mock.calls[0][0]).toContain(
+      "ORDER BY candidate.deleted_at IS NOT NULL",
     );
   });
 
