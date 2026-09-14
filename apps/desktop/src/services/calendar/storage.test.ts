@@ -179,6 +179,9 @@ describe("calendar SQLite storage", () => {
     expect(mocks.execute.mock.calls[0][0]).toContain(
       "linked_session.event_id = events.id",
     );
+    expect(mocks.execute.mock.calls[0][0]).not.toMatch(
+      /deleted_at IS NULL\s+AND julianday\(started_at\)/,
+    );
   });
 
   test("loads recurring identity fields for linked session migration", async () => {
@@ -211,6 +214,12 @@ describe("calendar SQLite storage", () => {
         startedAt: "2026-06-01T10:00:00.000Z",
       },
     ]);
+    expect(mocks.execute.mock.calls[0][0]).toContain(
+      "NULLIF(session.event_id, '') IS NULL",
+    );
+    expect(mocks.execute.mock.calls[0][0]).toContain(
+      "event.tracking_id_event = COALESCE",
+    );
   });
 
   test("commits event, session, human, and participant writes together", async () => {

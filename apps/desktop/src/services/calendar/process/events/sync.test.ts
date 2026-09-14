@@ -201,9 +201,10 @@ describe("syncEvents", () => {
       syncInput({
         incoming: [
           createIncomingEvent({
-            tracking_id_event: "external-1:2024-01-15",
+            tracking_id_event: "external-1:2026-09-14",
             external_id: "external-1",
             has_recurrence_rules: false,
+            started_at: "2026-09-15T18:00:00Z",
           }),
         ],
         existing: [
@@ -212,6 +213,7 @@ describe("syncEvents", () => {
             tracking_id_event: "external-1:series-b/RID=811101600",
             recurrence_series_id: "",
             has_recurrence_rules: false,
+            started_at: "2026-09-15T18:00:00Z",
           }),
         ],
       }),
@@ -220,9 +222,36 @@ describe("syncEvents", () => {
     expect(result.toUpdate).toHaveLength(1);
     expect(result.toUpdate[0]).toMatchObject({
       id: "detached-event",
-      tracking_id_event: "external-1:2024-01-15",
+      tracking_id_event: "external-1:2026-09-14",
     });
     expect(result.toDelete).toEqual([]);
+    expect(result.toAdd).toEqual([]);
+  });
+
+  test("migrates a pre-SQLite recurring id ending in the series id", () => {
+    const result = syncEvents(
+      createMockCtx(),
+      syncInput({
+        incoming: [
+          createIncomingEvent({
+            tracking_id_event: "external-1:2024-01-15",
+            external_id: "external-1",
+            recurrence_series_id: "new-series",
+            has_recurrence_rules: true,
+          }),
+        ],
+        existing: [
+          createExistingEvent({
+            id: "legacy-event",
+            tracking_id_event: "external-1:old-series",
+            recurrence_series_id: "old-series",
+            has_recurrence_rules: true,
+          }),
+        ],
+      }),
+    );
+
+    expect(result.toUpdate.map((event) => event.id)).toEqual(["legacy-event"]);
     expect(result.toAdd).toEqual([]);
   });
 

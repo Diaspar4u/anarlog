@@ -34,8 +34,9 @@ export function syncSessionEmbeddedEvents(
   const updates: SessionEventUpdate[] = [];
 
   for (const session of sessions) {
+    const hasActiveCalendar = ctx.calendarIds.has(session.calendarId);
     const incomingEvent =
-      (session.calendarId
+      session.calendarId && hasActiveCalendar
         ? incomingByKey.get(
             calendarEventKey(ctx.provider, session.calendarId, {
               tracking_id_event: session.trackingId,
@@ -44,7 +45,7 @@ export function syncSessionEmbeddedEvents(
               started_at: session.startedAt,
             }),
           )
-        : undefined) ?? incomingByTrackingId.get(session.trackingId);
+        : incomingByTrackingId.get(session.trackingId);
     if (!incomingEvent) continue;
 
     const calendarId =

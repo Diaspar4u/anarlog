@@ -347,8 +347,7 @@ export async function loadEventsForSync(
       WHERE calendar_id IN (${placeholders(calendarIds.length)})
         AND (
           (
-            deleted_at IS NULL
-            AND julianday(started_at) <= julianday(?)
+            julianday(started_at) <= julianday(?)
             AND julianday(CASE WHEN ended_at = '' THEN started_at ELSE ended_at END)
               >= julianday(?)
           )
@@ -468,7 +467,27 @@ export async function loadSessionsForTrackingIds(
           ) AS started_at
         FROM sessions AS session
         LEFT JOIN events AS event
-          ON event.id = session.event_id AND event.deleted_at IS NULL
+          ON event.deleted_at IS NULL
+          AND (
+            event.id = session.event_id
+            OR (
+              NULLIF(session.event_id, '') IS NULL
+              AND event.tracking_id_event = COALESCE(
+                CASE
+                  WHEN json_valid(session.event_json)
+                  THEN NULLIF(
+                    CAST(
+                      json_extract(session.event_json, '$.tracking_id')
+                      AS TEXT
+                    ),
+                    ''
+                  )
+                  ELSE NULL
+                END,
+                NULLIF(session.external_event_id, '')
+              )
+            )
+          )
         WHERE session.deleted_at IS NULL
       ) AS session_with_event
       WHERE tracking_id IN (${placeholders(ids.length)})
