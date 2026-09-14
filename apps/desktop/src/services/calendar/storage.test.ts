@@ -184,6 +184,26 @@ describe("calendar SQLite storage", () => {
     );
   });
 
+  test("loads Apple identity aliases outside the current sync window", async () => {
+    await loadEventsForSync(
+      {
+        provider: "apple",
+        connectionId: "apple",
+        from: new Date("2026-06-01T00:00:00.000Z"),
+        to: new Date("2026-06-02T00:00:00.000Z"),
+        calendarIds: new Set(["cal-work"]),
+        calendarTrackingIdToId: new Map([["primary", "cal-work"]]),
+      },
+      ["external-1:2026-06-01"],
+      ["external-1"],
+    );
+
+    expect(mocks.execute.mock.calls[0][0]).toContain(
+      "instr(tracking_id_event, ? || ':') = 1",
+    );
+    expect(mocks.execute.mock.calls[0][1]).toContain("external-1");
+  });
+
   test("loads recurring identity fields for linked session migration", async () => {
     mocks.execute.mockResolvedValue([
       {
@@ -215,7 +235,10 @@ describe("calendar SQLite storage", () => {
       },
     ]);
     expect(mocks.execute.mock.calls[0][0]).toContain(
-      "NULLIF(session.event_id, '')",
+      "active.id = session.event_id",
+    );
+    expect(mocks.execute.mock.calls[0][0]).toContain(
+      "active.deleted_at IS NULL",
     );
     expect(mocks.execute.mock.calls[0][0]).toContain(
       "candidate.calendar_id = COALESCE",

@@ -9,5 +9,6 @@ export function fetchExistingEvents(
   return loadEventsForSync(
     ctx,
     incoming.map((event) => event.tracking_id_event),
+    incoming.flatMap((event) => (event.external_id ? [event.external_id] : [])),
   );
 }

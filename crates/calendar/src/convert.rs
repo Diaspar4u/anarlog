@@ -177,6 +177,7 @@ fn convert_google_event(event: GoogleEvent, calendar_id: &str) -> CalendarEvent 
         calendar_id: calendar_id.to_string(),
         provider: CalendarProviderType::Google,
         external_id: event.ical_uid.unwrap_or_default(),
+        occurrence_at: None,
         title: event.summary.unwrap_or_default(),
         description: event.description,
         location: event.location,
@@ -252,6 +253,7 @@ fn convert_outlook_event(event: OutlookEvent, calendar_id: &str) -> CalendarEven
         calendar_id: calendar_id.to_string(),
         provider: CalendarProviderType::Outlook,
         external_id: event.ical_uid.unwrap_or_default(),
+        occurrence_at: None,
         title: event.subject.unwrap_or_default(),
         description,
         location,
@@ -273,6 +275,7 @@ fn convert_outlook_event(event: OutlookEvent, calendar_id: &str) -> CalendarEven
 fn convert_apple_event(event: AppleEvent) -> CalendarEvent {
     let raw = serde_json::to_string(&event).unwrap_or_default();
     let id = apple_event_id(&event);
+    let occurrence_at = event.occurrence_date.as_ref().map(|date| date.to_rfc3339());
 
     let organizer = event.organizer.as_ref().map(convert_person);
     let attendees = event.attendees.iter().map(convert_apple_attendee).collect();
@@ -297,6 +300,7 @@ fn convert_apple_event(event: AppleEvent) -> CalendarEvent {
         calendar_id: event.calendar.id,
         provider: CalendarProviderType::Apple,
         external_id: event.external_identifier,
+        occurrence_at,
         title: event.title,
         description: event.notes,
         location: event.location,
@@ -650,6 +654,10 @@ mod apple_identity_tests {
 
         assert_eq!(apple_event_id(&recurring), "external-1:2026-09-21");
         assert_eq!(apple_event_id(&detached), "external-1:2026-09-21");
+        assert_eq!(
+            convert_apple_event(detached).occurrence_at.as_deref(),
+            Some("2026-09-21T18:00:00+00:00")
+        );
     }
 
     #[test]

@@ -315,6 +315,7 @@ export async function tombstoneCalendarConnection(
 export async function loadEventsForSync(
   ctx: Ctx,
   incomingTrackingIds: Iterable<string>,
+  incomingExternalIds: Iterable<string> = [],
 ): Promise<ExistingEvent[]> {
   const calendarIds = Array.from(ctx.calendarIds);
   if (calendarIds.length === 0) return [];
@@ -323,6 +324,16 @@ export async function loadEventsForSync(
   const incomingClause =
     trackingIds.length > 0
       ? `OR tracking_id_event IN (${placeholders(trackingIds.length)})`
+      : "";
+  const externalIds =
+    ctx.provider === "apple"
+      ? Array.from(new Set(Array.from(incomingExternalIds).filter(Boolean)))
+      : [];
+  const externalClause =
+    externalIds.length > 0
+      ? `OR (${externalIds
+          .map(() => "instr(tracking_id_event, ? || ':') = 1")
+          .join(" OR ")})`
       : "";
   const rows = await liveQueryClient.execute<EventSqlRow>(
     `
@@ -352,6 +363,7 @@ export async function loadEventsForSync(
               >= julianday(?)
           )
           ${incomingClause}
+          ${externalClause}
         )
       ORDER BY
         EXISTS (
@@ -369,6 +381,7 @@ export async function loadEventsForSync(
       ctx.to.toISOString(),
       ctx.from.toISOString(),
       ...trackingIds,
+      ...externalIds,
     ],
   );
 
@@ -468,7 +481,13 @@ export async function loadSessionsForTrackingIds(
         FROM sessions AS session
         LEFT JOIN events AS event
           ON event.id = COALESCE(
-            NULLIF(session.event_id, ''),
+            (
+              SELECT active.id
+              FROM events AS active
+              WHERE active.id = session.event_id
+                AND active.deleted_at IS NULL
+              LIMIT 1
+            ),
             (
               SELECT candidate.id
               FROM events AS candidate
