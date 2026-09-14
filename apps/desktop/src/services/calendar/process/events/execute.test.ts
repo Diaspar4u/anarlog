@@ -130,7 +130,7 @@ describe("syncSessionEmbeddedEvents", () => {
             "session-1",
             makeSessionEvent({
               tracking_id: "external-1:old-series:2024-01-15",
-              title: "Team planning",
+              title: "Stale embedded title",
               recurrence_series_id: "old-series",
               has_recurrence_rules: true,
             }),
