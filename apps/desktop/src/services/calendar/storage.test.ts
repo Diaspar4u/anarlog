@@ -21,6 +21,7 @@ import {
   applyCalendarInventory,
   applyConnectionSync,
   loadEventsForSync,
+  loadSessionsForTrackingIds,
   tombstoneCalendarConnection,
 } from "./storage";
 
@@ -175,6 +176,41 @@ describe("calendar SQLite storage", () => {
     expect(mocks.execute.mock.calls[0][0]).toContain(
       "tracking_id_event IN (?)",
     );
+    expect(mocks.execute.mock.calls[0][0]).toContain(
+      "linked_session.event_id = events.id",
+    );
+  });
+
+  test("loads recurring identity fields for linked session migration", async () => {
+    mocks.execute.mockResolvedValue([
+      {
+        id: "session-1",
+        owner_user_id: "user-1",
+        event_json: "{}",
+        tracking_id: "external-1:old-series:2026-06-01",
+        calendar_id: "cal-work",
+        recurrence_series_id: "old-series",
+        has_recurrence_rules: 1,
+        started_at: "2026-06-01T10:00:00.000Z",
+      },
+    ]);
+
+    const rows = await loadSessionsForTrackingIds([
+      "external-1:old-series:2026-06-01",
+    ]);
+
+    expect(rows).toEqual([
+      {
+        id: "session-1",
+        ownerUserId: "user-1",
+        eventJson: "{}",
+        trackingId: "external-1:old-series:2026-06-01",
+        calendarId: "cal-work",
+        recurrenceSeriesId: "old-series",
+        hasRecurrenceRules: true,
+        startedAt: "2026-06-01T10:00:00.000Z",
+      },
+    ]);
   });
 
   test("commits event, session, human, and participant writes together", async () => {

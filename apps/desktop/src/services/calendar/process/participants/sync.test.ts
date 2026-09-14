@@ -23,6 +23,10 @@ const session = {
   ownerUserId: "user-1",
   eventJson: JSON.stringify({ tracking_id: "tracking-1" }),
   trackingId: "tracking-1",
+  calendarId: "cal-1",
+  recurrenceSeriesId: "",
+  hasRecurrenceRules: false,
+  startedAt: "2024-01-15T10:00:00Z",
 };
 
 describe("syncSessionParticipants", () => {

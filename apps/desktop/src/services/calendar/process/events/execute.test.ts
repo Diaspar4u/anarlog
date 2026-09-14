@@ -41,6 +41,10 @@ function makeSession(
     ownerUserId: "user-1",
     eventJson: JSON.stringify(event),
     trackingId: event.tracking_id,
+    calendarId: event.calendar_id,
+    recurrenceSeriesId: event.recurrence_series_id ?? "",
+    hasRecurrenceRules: event.has_recurrence_rules,
+    startedAt: event.started_at,
   };
 }
 
@@ -100,6 +104,78 @@ describe("syncSessionEmbeddedEvents", () => {
     ]);
   });
 
+  test("preserves a session when EventKit replaces its recurring series id", () => {
+    const updates = syncSessionEmbeddedEvents(
+      createMockCtx(),
+      [
+        makeIncomingEvent({
+          tracking_id_event: "external-1:old-series:2024-01-15",
+          external_id: "external-1",
+          recurrence_series_id: "old-series",
+          has_recurrence_rules: true,
+          title: "Stale planning",
+        }),
+        makeIncomingEvent({
+          tracking_id_event: "external-1:new-series:2024-01-15",
+          external_id: "external-1",
+          recurrence_series_id: "new-series",
+          has_recurrence_rules: true,
+          title: "Updated planning",
+        }),
+      ],
+      [
+        {
+          ...makeSession(
+            "session-1",
+            makeSessionEvent({
+              tracking_id: "external-1:old-series:2024-01-15",
+              recurrence_series_id: "old-series",
+              has_recurrence_rules: true,
+            }),
+          ),
+          calendarId: "cal-1",
+          recurrenceSeriesId: "old-series",
+          hasRecurrenceRules: true,
+        },
+      ],
+    );
+
+    expect(updates).toHaveLength(1);
+    expect(updates[0].trackingId).toBe("external-1:new-series:2024-01-15");
+    expect(JSON.parse(updates[0].eventJson)).toMatchObject({
+      tracking_id: "external-1:new-series:2024-01-15",
+      title: "Updated planning",
+    });
+  });
+
+  test("migrates a session attached to a detached EventKit occurrence", () => {
+    const updates = syncSessionEmbeddedEvents(
+      createMockCtx(),
+      [
+        makeIncomingEvent({
+          tracking_id_event: "external-1:2024-01-15",
+          external_id: "external-1",
+          has_recurrence_rules: false,
+        }),
+      ],
+      [
+        {
+          ...makeSession(
+            "session-1",
+            makeSessionEvent({
+              tracking_id: "external-1:series-b/RID=811101600",
+            }),
+          ),
+          recurrenceSeriesId: "",
+          hasRecurrenceRules: false,
+        },
+      ],
+    );
+
+    expect(updates).toHaveLength(1);
+    expect(updates[0].trackingId).toBe("external-1:2024-01-15");
+  });
+
   test("skips sessions without a matching event", () => {
     const updates = syncSessionEmbeddedEvents(
       createMockCtx(),
@@ -110,6 +186,10 @@ describe("syncSessionEmbeddedEvents", () => {
           ownerUserId: "user-1",
           eventJson: "",
           trackingId: "other-event",
+          calendarId: "cal-1",
+          recurrenceSeriesId: "",
+          hasRecurrenceRules: false,
+          startedAt: "",
         },
       ],
     );

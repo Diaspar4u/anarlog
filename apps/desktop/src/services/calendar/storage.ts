@@ -43,6 +43,10 @@ type SessionSqlRow = {
   owner_user_id: string;
   event_json: string;
   tracking_id: string;
+  calendar_id: string;
+  recurrence_series_id: string;
+  has_recurrence_rules: boolean | number;
+  started_at: string;
 };
 
 export type SessionSyncRow = {
@@ -50,6 +54,10 @@ export type SessionSyncRow = {
   ownerUserId: string;
   eventJson: string;
   trackingId: string;
+  calendarId: string;
+  recurrenceSeriesId: string;
+  hasRecurrenceRules: boolean;
+  startedAt: string;
 };
 
 type HumanSqlRow = {
@@ -346,7 +354,16 @@ export async function loadEventsForSync(
           )
           ${incomingClause}
         )
-      ORDER BY deleted_at IS NOT NULL, created_at, id
+      ORDER BY
+        EXISTS (
+          SELECT 1
+          FROM sessions AS linked_session
+          WHERE linked_session.event_id = events.id
+            AND linked_session.deleted_at IS NULL
+        ) DESC,
+        deleted_at IS NOT NULL,
+        created_at,
+        id
     `,
     [
       ...calendarIds,
@@ -371,7 +388,15 @@ export async function loadSessionsForTrackingIds(
 
   const rows = await liveQueryClient.execute<SessionSqlRow>(
     `
-      SELECT id, owner_user_id, event_json, tracking_id
+      SELECT
+        id,
+        owner_user_id,
+        event_json,
+        tracking_id,
+        calendar_id,
+        recurrence_series_id,
+        has_recurrence_rules,
+        started_at
       FROM (
         SELECT
           session.id,
@@ -389,7 +414,58 @@ export async function loadSessionsForTrackingIds(
             END,
             NULLIF(session.external_event_id, ''),
             NULLIF(event.tracking_id_event, '')
-          ) AS tracking_id
+          ) AS tracking_id,
+          COALESCE(
+            CASE
+              WHEN json_valid(session.event_json)
+              THEN NULLIF(
+                CAST(json_extract(session.event_json, '$.calendar_id') AS TEXT),
+                ''
+              )
+              ELSE NULL
+            END,
+            NULLIF(event.calendar_id, ''),
+            ''
+          ) AS calendar_id,
+          COALESCE(
+            CASE
+              WHEN json_valid(session.event_json)
+              THEN NULLIF(
+                CAST(
+                  json_extract(session.event_json, '$.recurrence_series_id')
+                  AS TEXT
+                ),
+                ''
+              )
+              ELSE NULL
+            END,
+            NULLIF(event.recurrence_series_id, ''),
+            ''
+          ) AS recurrence_series_id,
+          COALESCE(
+            CASE
+              WHEN json_valid(session.event_json)
+              THEN CAST(
+                json_extract(session.event_json, '$.has_recurrence_rules')
+                AS INTEGER
+              )
+              ELSE NULL
+            END,
+            event.has_recurrence_rules,
+            0
+          ) AS has_recurrence_rules,
+          COALESCE(
+            CASE
+              WHEN json_valid(session.event_json)
+              THEN NULLIF(
+                CAST(json_extract(session.event_json, '$.started_at') AS TEXT),
+                ''
+              )
+              ELSE NULL
+            END,
+            NULLIF(event.started_at, ''),
+            ''
+          ) AS started_at
         FROM sessions AS session
         LEFT JOIN events AS event
           ON event.id = session.event_id AND event.deleted_at IS NULL
@@ -406,6 +482,10 @@ export async function loadSessionsForTrackingIds(
     ownerUserId: row.owner_user_id,
     eventJson: row.event_json,
     trackingId: row.tracking_id,
+    calendarId: row.calendar_id,
+    recurrenceSeriesId: row.recurrence_series_id,
+    hasRecurrenceRules: Boolean(row.has_recurrence_rules),
+    startedAt: row.started_at,
   }));
 }
 

@@ -76,4 +76,56 @@ describe("fetchIncomingEvents", () => {
 
     expect(result.events[0]?.meeting_link).toBe(meetingLink);
   });
+
+  test("excludes cancelled events before SQLite sync", async () => {
+    calendarCommands.listEvents.mockResolvedValue({
+      status: "success",
+      data: [
+        {
+          id: "cancelled-standalone-event",
+          calendar_id: "primary",
+          title: "Cancelled one-off",
+          started_at: "2026-06-01T09:00:00.000Z",
+          ended_at: "2026-06-01T09:30:00.000Z",
+          status: "cancelled",
+          attendees: [],
+          organizer: null,
+          has_recurrence_rules: false,
+          is_all_day: false,
+        },
+        {
+          id: "cancelled-recurring-event",
+          calendar_id: "primary",
+          title: "Cancelled planning",
+          started_at: "2026-06-01T10:00:00.000Z",
+          ended_at: "2026-06-01T11:00:00.000Z",
+          status: "cancelled",
+          attendees: [],
+          organizer: null,
+          has_recurrence_rules: true,
+          is_all_day: false,
+        },
+        {
+          id: "confirmed-event",
+          calendar_id: "primary",
+          title: "Confirmed planning",
+          started_at: "2026-06-01T12:00:00.000Z",
+          ended_at: "2026-06-01T13:00:00.000Z",
+          status: "confirmed",
+          attendees: [],
+          organizer: null,
+          has_recurrence_rules: false,
+          is_all_day: false,
+        },
+      ],
+    });
+
+    const result = await fetchIncomingEvents(ctx);
+
+    expect(result.events.map((event) => event.tracking_id_event)).toEqual([
+      "confirmed-event",
+    ]);
+    expect(result.participants.has("cancelled-standalone-event")).toBe(false);
+    expect(result.participants.has("cancelled-recurring-event")).toBe(false);
+  });
 });
