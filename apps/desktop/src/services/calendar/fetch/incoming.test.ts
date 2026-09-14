@@ -129,7 +129,7 @@ describe("fetchIncomingEvents", () => {
     expect(result.participants.has("cancelled-recurring-event")).toBe(false);
   });
 
-  test("keeps the provider modification time used to select a duplicate", async () => {
+  test("normalizes the provider modification time", async () => {
     calendarCommands.listEvents.mockResolvedValue({
       status: "success",
       data: [

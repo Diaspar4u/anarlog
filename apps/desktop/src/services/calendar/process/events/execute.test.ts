@@ -207,6 +207,32 @@ describe("syncSessionEmbeddedEvents", () => {
     expect(updates).toEqual([]);
   });
 
+  test("does not fall back when the session calendar was removed", () => {
+    const updates = syncSessionEmbeddedEvents(
+      createMockCtx({
+        calendarIds: new Set(["cal-2"]),
+        calendarTrackingIdToId: new Map([["tracking-cal-2", "cal-2"]]),
+      }),
+      [
+        makeIncomingEvent({
+          tracking_id_event: "shared-tracking-id",
+          tracking_id_calendar: "tracking-cal-2",
+        }),
+      ],
+      [
+        {
+          ...makeSession(
+            "session-1",
+            makeSessionEvent({ tracking_id: "shared-tracking-id" }),
+          ),
+          calendarId: "cal-removed",
+        },
+      ],
+    );
+
+    expect(updates).toEqual([]);
+  });
+
   test("skips sessions without a matching event", () => {
     const updates = syncSessionEmbeddedEvents(
       createMockCtx(),
@@ -246,7 +272,7 @@ describe("syncSessionEmbeddedEvents", () => {
         calendarTrackingIdToId: new Map([["tracking-cal-new", "cal-new"]]),
       }),
       [makeIncomingEvent({ tracking_id_calendar: "tracking-cal-new" })],
-      [makeSession("session-1")],
+      [{ ...makeSession("session-1"), calendarId: "" }],
     );
 
     expect(JSON.parse(updates[0].eventJson).calendar_id).toBe("cal-new");

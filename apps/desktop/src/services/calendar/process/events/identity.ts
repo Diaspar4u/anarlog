@@ -19,7 +19,7 @@ export function calendarEventKey(
     const title = event.title?.trim();
     const startedAt = normalizedInstant(event.started_at);
     const endedAt = normalizedInstant(event.ended_at);
-    if (title && startedAt && endedAt) {
+    if (title !== undefined && startedAt && endedAt) {
       return [
         calendarId,
         "visible",
