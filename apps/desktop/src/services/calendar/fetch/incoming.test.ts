@@ -128,4 +128,38 @@ describe("fetchIncomingEvents", () => {
     expect(result.participants.has("cancelled-standalone-event")).toBe(false);
     expect(result.participants.has("cancelled-recurring-event")).toBe(false);
   });
+
+  test("keeps Apple occurrence metadata needed for legacy migration", async () => {
+    calendarCommands.listEvents.mockResolvedValue({
+      status: "success",
+      data: [
+        {
+          provider: "apple",
+          id: "external-1:2026-09-14",
+          calendar_id: "primary",
+          external_id: "external-1",
+          title: "Detached occurrence",
+          started_at: "2026-09-16T05:00:00.000Z",
+          ended_at: "2026-09-16T06:00:00.000Z",
+          timezone: "America/Los_Angeles",
+          status: "confirmed",
+          attendees: [],
+          organizer: null,
+          has_recurrence_rules: false,
+          is_all_day: false,
+          raw: JSON.stringify({
+            event_identifier: "external-1:series-b/RID=811141200",
+            occurrence_date: "2026-09-15T05:00:00Z",
+          }),
+        },
+      ],
+    });
+
+    const result = await fetchIncomingEvents({ ...ctx, provider: "apple" });
+
+    expect(result.events[0]).toMatchObject({
+      provider_tracking_id: "external-1:series-b/RID=811141200",
+      occurrence_at: "2026-09-15T05:00:00Z",
+    });
+  });
 });
