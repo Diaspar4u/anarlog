@@ -45,6 +45,14 @@ describe("getForkChangelog", () => {
     expect(content).toContain("one calendar entry, one notification");
   });
 
+  it("returns the reviewed visible-occurrence correction notes", () => {
+    const content = getForkChangelog("1.4.21-ads.4");
+
+    expect(content).toContain("one Apple Calendar entry");
+    expect(content).toContain("newest provider details");
+    expect(content).toContain("replacement-series aliases");
+  });
+
   it.each(EXCLUDED_FEATURES)(
     "omits removed or unused feature: %s",
     (feature) => {
