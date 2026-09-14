@@ -6,7 +6,6 @@ export type IncomingEvent = {
   tracking_id_event: string;
   tracking_id_calendar: string;
   external_id?: string;
-  provider_tracking_id?: string;
   occurrence_at?: string;
   title?: string;
   started_at?: string;

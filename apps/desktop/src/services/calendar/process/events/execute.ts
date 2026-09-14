@@ -3,7 +3,7 @@ import type { SessionEvent } from "@anlg/store";
 import type { Ctx } from "../../ctx";
 import type { IncomingEvent } from "../../fetch/types";
 import type { SessionSyncRow } from "../../storage";
-import { calendarEventKey, calendarEventKeys } from "./identity";
+import { buildIncomingEventIndex, calendarEventKeys } from "./identity";
 
 export type SessionEventUpdate = {
   sessionId: string;
@@ -21,28 +21,11 @@ export function syncSessionEmbeddedEvents(
   const incomingByTrackingId = new Map(
     incoming.map((event) => [event.tracking_id_event, event]),
   );
-  const incomingByCanonicalKey = new Map<string, IncomingEvent>();
-  for (const event of incoming) {
-    const calendarId = ctx.calendarTrackingIdToId.get(
-      event.tracking_id_calendar,
-    );
-    if (!calendarId) continue;
-    incomingByCanonicalKey.set(
-      calendarEventKey(ctx.provider, calendarId, event),
-      event,
-    );
-  }
-
-  const incomingByKey = new Map<string, IncomingEvent>();
-  for (const event of incomingByCanonicalKey.values()) {
-    const calendarId = ctx.calendarTrackingIdToId.get(
-      event.tracking_id_calendar,
-    );
-    if (!calendarId) continue;
-    for (const key of calendarEventKeys(ctx.provider, calendarId, event)) {
-      incomingByKey.set(key, event);
-    }
-  }
+  const { expanded: incomingByKey } = buildIncomingEventIndex(
+    ctx.provider,
+    incoming,
+    ctx.calendarTrackingIdToId,
+  );
   const updates: SessionEventUpdate[] = [];
 
   for (const session of sessions) {

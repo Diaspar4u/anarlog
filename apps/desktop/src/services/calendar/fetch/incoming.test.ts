@@ -142,15 +142,12 @@ describe("fetchIncomingEvents", () => {
           started_at: "2026-09-16T05:00:00.000Z",
           ended_at: "2026-09-16T06:00:00.000Z",
           timezone: "America/Los_Angeles",
+          occurrence_at: "2026-09-15T05:00:00Z",
           status: "confirmed",
           attendees: [],
           organizer: null,
           has_recurrence_rules: false,
           is_all_day: false,
-          raw: JSON.stringify({
-            event_identifier: "external-1:series-b/RID=811141200",
-            occurrence_date: "2026-09-15T05:00:00Z",
-          }),
         },
       ],
     });
@@ -158,7 +155,6 @@ describe("fetchIncomingEvents", () => {
     const result = await fetchIncomingEvents({ ...ctx, provider: "apple" });
 
     expect(result.events[0]).toMatchObject({
-      provider_tracking_id: "external-1:series-b/RID=811141200",
       occurrence_at: "2026-09-15T05:00:00Z",
     });
   });

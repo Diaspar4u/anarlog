@@ -1,9 +1,10 @@
 import type { CalendarProviderType } from "@anlg/plugin-calendar";
 
+import type { IncomingEvent } from "../../fetch/types";
+
 type EventIdentity = {
   tracking_id_event: string;
   external_id?: string;
-  provider_tracking_id?: string;
   occurrence_at?: string;
   recurrence_series_id?: string;
   has_recurrence_rules: boolean;
@@ -34,12 +35,34 @@ export function calendarEventKeys(
     keys.push(`${calendarId}\u0000${externalId}\u0000${occurrenceInstant}`);
   }
 
-  const providerTrackingId = event.provider_tracking_id?.trim();
-  if (providerTrackingId) {
-    keys.push(`${calendarId}\u0000${providerTrackingId}`);
+  return Array.from(new Set(keys));
+}
+
+export function buildIncomingEventIndex(
+  provider: CalendarProviderType,
+  incoming: IncomingEvent[],
+  calendarTrackingIdToId: Map<string, string>,
+): {
+  canonical: Map<string, IncomingEvent>;
+  expanded: Map<string, IncomingEvent>;
+} {
+  const canonical = new Map<string, IncomingEvent>();
+  for (const event of incoming) {
+    const calendarId = calendarTrackingIdToId.get(event.tracking_id_calendar);
+    if (!calendarId) continue;
+    canonical.set(calendarEventKey(provider, calendarId, event), event);
   }
 
-  return Array.from(new Set(keys));
+  const expanded = new Map<string, IncomingEvent>();
+  for (const event of canonical.values()) {
+    const calendarId = calendarTrackingIdToId.get(event.tracking_id_calendar);
+    if (!calendarId) continue;
+    for (const key of calendarEventKeys(provider, calendarId, event)) {
+      expanded.set(key, event);
+    }
+  }
+
+  return { canonical, expanded };
 }
 
 function stableTrackingId(

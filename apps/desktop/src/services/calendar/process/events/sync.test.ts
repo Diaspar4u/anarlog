@@ -203,7 +203,6 @@ describe("syncEvents", () => {
           createIncomingEvent({
             tracking_id_event: "external-1:2026-09-14",
             external_id: "external-1",
-            provider_tracking_id: "external-1:new-series/RID=811141200",
             occurrence_at: "2026-09-15T05:00:00Z",
             has_recurrence_rules: false,
             started_at: "2026-09-16T05:00:00Z",
@@ -490,5 +489,23 @@ describe("syncEvents", () => {
       expect(result.toAdd).toHaveLength(1);
       expect(result.toAdd[0].participants).toEqual(participants);
     });
+  });
+
+  test("does not delete an unmatched alias candidate outside the sync window", () => {
+    const result = syncEvents(
+      createMockCtx(),
+      syncInput({
+        incoming: [],
+        existing: [
+          createExistingEvent({
+            id: "event-outside-window",
+            started_at: "2026-09-01T18:00:00Z",
+            ended_at: "2026-09-01T19:00:00Z",
+          }),
+        ],
+      }),
+    );
+
+    expect(result.toDelete).toEqual([]);
   });
 });

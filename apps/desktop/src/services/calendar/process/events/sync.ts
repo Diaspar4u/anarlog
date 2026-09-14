@@ -1,5 +1,9 @@
 import type { Ctx } from "../../ctx";
-import { calendarEventKey, calendarEventKeys } from "./identity";
+import {
+  buildIncomingEventIndex,
+  calendarEventKey,
+  calendarEventKeys,
+} from "./identity";
 import type { EventsSyncInput, EventsSyncOutput } from "./types";
 
 export function syncEvents(
@@ -12,28 +16,8 @@ export function syncEvents(
     toAdd: [],
   };
 
-  const incomingByCanonicalKey = new Map<string, (typeof incoming)[number]>();
-  for (const event of incoming) {
-    const calendarId = ctx.calendarTrackingIdToId.get(
-      event.tracking_id_calendar,
-    );
-    if (!calendarId) continue;
-    incomingByCanonicalKey.set(
-      calendarEventKey(ctx.provider, calendarId, event),
-      event,
-    );
-  }
-
-  const incomingByKey = new Map<string, (typeof incoming)[number]>();
-  for (const event of incomingByCanonicalKey.values()) {
-    const calendarId = ctx.calendarTrackingIdToId.get(
-      event.tracking_id_calendar,
-    );
-    if (!calendarId) continue;
-    for (const key of calendarEventKeys(ctx.provider, calendarId, event)) {
-      incomingByKey.set(key, event);
-    }
-  }
+  const { canonical: incomingByCanonicalKey, expanded: incomingByKey } =
+    buildIncomingEventIndex(ctx.provider, incoming, ctx.calendarTrackingIdToId);
   const handledKeys = new Set<string>();
 
   for (const storeEvent of existing) {
@@ -68,7 +52,10 @@ export function syncEvents(
       continue;
     }
 
-    if (!storeEvent.deleted_at) {
+    if (
+      !storeEvent.deleted_at &&
+      overlapsSyncRange(ctx, storeEvent.started_at, storeEvent.ended_at)
+    ) {
       out.toDelete.push(storeEvent.id);
     }
   }
@@ -86,4 +73,16 @@ export function syncEvents(
   }
 
   return out;
+}
+
+function overlapsSyncRange(
+  ctx: Ctx,
+  startedAt: string,
+  endedAt: string,
+): boolean {
+  const start = Date.parse(startedAt);
+  const end = Date.parse(endedAt || startedAt);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return true;
+
+  return start <= ctx.to.getTime() && end >= ctx.from.getTime();
 }

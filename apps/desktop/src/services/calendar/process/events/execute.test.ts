@@ -155,7 +155,6 @@ describe("syncSessionEmbeddedEvents", () => {
         makeIncomingEvent({
           tracking_id_event: "external-1:2026-09-14",
           external_id: "external-1",
-          provider_tracking_id: "external-1:new-series/RID=811141200",
           occurrence_at: "2026-09-15T05:00:00Z",
           has_recurrence_rules: false,
           started_at: "2026-09-16T05:00:00Z",
