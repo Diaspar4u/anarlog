@@ -4730,7 +4730,7 @@ dependencies = [
 
 [[package]]
 name = "desktop"
-version = "1.4.21-ads.2"
+version = "1.4.21-ads.3"
 dependencies = [
  "audio-actual",
  "audio-mock",

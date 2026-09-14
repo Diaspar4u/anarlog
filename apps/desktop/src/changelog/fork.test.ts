@@ -35,6 +35,16 @@ describe("getForkChangelog", () => {
     expect(content).toContain("Preserve linked meeting notes");
   });
 
+  it("returns superseding notes for Apple Calendar migration edges", () => {
+    const content = getForkChangelog("1.4.21-ads.3");
+
+    expect(content).toContain("timezone date boundaries");
+    expect(content).toContain(
+      "Resolve legacy linked sessions deterministically",
+    );
+    expect(content).toContain("one calendar entry, one notification");
+  });
+
   it.each(EXCLUDED_FEATURES)(
     "omits removed or unused feature: %s",
     (feature) => {
