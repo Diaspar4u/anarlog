@@ -289,6 +289,9 @@ fn convert_apple_event(event: AppleEvent) -> CalendarEvent {
         let day = local_date_string(date, event.time_zone.as_deref());
         format!("{}:{}", event.event_identifier, day)
     } else {
+        // Detached EventKit identifiers already include an occurrence-specific
+        // `/RID=` suffix. Preserve it so legacy rows and sessions retain their
+        // exact tracking alias; cross-series coalescing happens after conversion.
         event.event_identifier.clone()
     };
     let provider_modified_at = event
@@ -607,6 +610,25 @@ fn resolve_meeting_link(
     provider_link
         .or_else(|| location.and_then(crate::parse_meeting_link))
         .or_else(|| description.and_then(crate::parse_meeting_link))
+}
+
+#[cfg(test)]
+mod apple_tracking_id_tests {
+    use super::*;
+
+    #[test]
+    fn detached_occurrence_keeps_its_provider_rid() {
+        let mut events: Vec<AppleEvent> = serde_json::from_str(include_str!(
+            "../../apple-calendar/src/fixture/data/default/base/events.json"
+        ))
+        .expect("Apple event fixture must deserialize");
+        let mut event = events.remove(0);
+        event.event_identifier = "series-a/RID=811101600".to_string();
+        event.has_recurrence_rules = false;
+        event.is_detached = true;
+
+        assert_eq!(convert_apple_event(event).id, "series-a/RID=811101600");
+    }
 }
 
 #[cfg(test)]
