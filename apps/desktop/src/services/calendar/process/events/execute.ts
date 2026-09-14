@@ -3,7 +3,7 @@ import type { SessionEvent } from "@anlg/store";
 import type { Ctx } from "../../ctx";
 import type { IncomingEvent } from "../../fetch/types";
 import type { SessionSyncRow } from "../../storage";
-import { calendarEventKey } from "./identity";
+import { calendarEventKey, calendarEventKeys } from "./identity";
 
 export type SessionEventUpdate = {
   sessionId: string;
@@ -21,30 +21,42 @@ export function syncSessionEmbeddedEvents(
   const incomingByTrackingId = new Map(
     incoming.map((event) => [event.tracking_id_event, event]),
   );
-  const incomingByKey = new Map(
-    incoming.flatMap((event) => {
-      const calendarId = ctx.calendarTrackingIdToId.get(
-        event.tracking_id_calendar,
-      );
-      return calendarId
-        ? [[calendarEventKey(ctx.provider, calendarId, event), event] as const]
-        : [];
-    }),
-  );
+  const incomingByCanonicalKey = new Map<string, IncomingEvent>();
+  for (const event of incoming) {
+    const calendarId = ctx.calendarTrackingIdToId.get(
+      event.tracking_id_calendar,
+    );
+    if (!calendarId) continue;
+    incomingByCanonicalKey.set(
+      calendarEventKey(ctx.provider, calendarId, event),
+      event,
+    );
+  }
+
+  const incomingByKey = new Map<string, IncomingEvent>();
+  for (const event of incomingByCanonicalKey.values()) {
+    const calendarId = ctx.calendarTrackingIdToId.get(
+      event.tracking_id_calendar,
+    );
+    if (!calendarId) continue;
+    for (const key of calendarEventKeys(ctx.provider, calendarId, event)) {
+      incomingByKey.set(key, event);
+    }
+  }
   const updates: SessionEventUpdate[] = [];
 
   for (const session of sessions) {
     const hasActiveCalendar = ctx.calendarIds.has(session.calendarId);
     const incomingEvent =
       session.calendarId && hasActiveCalendar
-        ? incomingByKey.get(
-            calendarEventKey(ctx.provider, session.calendarId, {
-              tracking_id_event: session.trackingId,
-              recurrence_series_id: session.recurrenceSeriesId,
-              has_recurrence_rules: session.hasRecurrenceRules,
-              started_at: session.startedAt,
-            }),
-          )
+        ? calendarEventKeys(ctx.provider, session.calendarId, {
+            tracking_id_event: session.trackingId,
+            recurrence_series_id: session.recurrenceSeriesId,
+            has_recurrence_rules: session.hasRecurrenceRules,
+            started_at: session.startedAt,
+          })
+            .map((key) => incomingByKey.get(key))
+            .find((event) => event !== undefined)
         : incomingByTrackingId.get(session.trackingId);
     if (!incomingEvent) continue;
 

@@ -75,6 +75,7 @@ function normalizeCalendarEvent(calendarEvent: CalendarEvent): {
   eventParticipants: EventParticipant[];
 } {
   const eventParticipants: EventParticipant[] = [];
+  const appleIdentity = readAppleOccurrenceIdentity(calendarEvent);
 
   if (calendarEvent.organizer) {
     eventParticipants.push({
@@ -104,6 +105,8 @@ function normalizeCalendarEvent(calendarEvent: CalendarEvent): {
       tracking_id_event: calendarEvent.id,
       tracking_id_calendar: calendarEvent.calendar_id,
       external_id: calendarEvent.external_id || undefined,
+      provider_tracking_id: appleIdentity.providerTrackingId,
+      occurrence_at: appleIdentity.occurrenceAt,
       title: calendarEvent.title,
       started_at: calendarEvent.started_at,
       ended_at: calendarEvent.ended_at,
@@ -116,4 +119,30 @@ function normalizeCalendarEvent(calendarEvent: CalendarEvent): {
     },
     eventParticipants,
   };
+}
+
+function readAppleOccurrenceIdentity(calendarEvent: CalendarEvent): {
+  providerTrackingId?: string;
+  occurrenceAt?: string;
+} {
+  if (calendarEvent.provider !== "apple" || !calendarEvent.raw) return {};
+
+  try {
+    const raw = JSON.parse(calendarEvent.raw) as {
+      event_identifier?: unknown;
+      occurrence_date?: unknown;
+    };
+    return {
+      providerTrackingId:
+        typeof raw.event_identifier === "string"
+          ? raw.event_identifier
+          : undefined,
+      occurrenceAt:
+        typeof raw.occurrence_date === "string"
+          ? raw.occurrence_date
+          : undefined,
+    };
+  } catch {
+    return {};
+  }
 }

@@ -1,5 +1,5 @@
 import type { Ctx } from "../../ctx";
-import { calendarEventKey } from "./identity";
+import { calendarEventKey, calendarEventKeys } from "./identity";
 import type { EventsSyncInput, EventsSyncOutput } from "./types";
 
 export function syncEvents(
@@ -12,25 +12,45 @@ export function syncEvents(
     toAdd: [],
   };
 
-  const incomingByKey = new Map(
-    incoming.flatMap((event) => {
-      const calendarId = ctx.calendarTrackingIdToId.get(
-        event.tracking_id_calendar,
-      );
-      return calendarId
-        ? [[calendarEventKey(ctx.provider, calendarId, event), event] as const]
-        : [];
-    }),
-  );
+  const incomingByCanonicalKey = new Map<string, (typeof incoming)[number]>();
+  for (const event of incoming) {
+    const calendarId = ctx.calendarTrackingIdToId.get(
+      event.tracking_id_calendar,
+    );
+    if (!calendarId) continue;
+    incomingByCanonicalKey.set(
+      calendarEventKey(ctx.provider, calendarId, event),
+      event,
+    );
+  }
+
+  const incomingByKey = new Map<string, (typeof incoming)[number]>();
+  for (const event of incomingByCanonicalKey.values()) {
+    const calendarId = ctx.calendarTrackingIdToId.get(
+      event.tracking_id_calendar,
+    );
+    if (!calendarId) continue;
+    for (const key of calendarEventKeys(ctx.provider, calendarId, event)) {
+      incomingByKey.set(key, event);
+    }
+  }
   const handledKeys = new Set<string>();
 
   for (const storeEvent of existing) {
-    const key = calendarEventKey(
+    const matchingIncomingEvent = calendarEventKeys(
       ctx.provider,
       storeEvent.calendar_id,
       storeEvent,
-    );
-    const matchingIncomingEvent = incomingByKey.get(key);
+    )
+      .map((key) => incomingByKey.get(key))
+      .find((event) => event !== undefined);
+    const key = matchingIncomingEvent
+      ? calendarEventKey(
+          ctx.provider,
+          storeEvent.calendar_id,
+          matchingIncomingEvent,
+        )
+      : calendarEventKey(ctx.provider, storeEvent.calendar_id, storeEvent);
 
     if (matchingIncomingEvent && !handledKeys.has(key)) {
       out.toUpdate.push({
@@ -54,7 +74,7 @@ export function syncEvents(
   }
 
   const scheduledKeys = new Set(handledKeys);
-  for (const [key, incomingEvent] of incomingByKey) {
+  for (const [key, incomingEvent] of incomingByCanonicalKey) {
     if (!scheduledKeys.has(key)) {
       out.toAdd.push({
         ...incomingEvent,

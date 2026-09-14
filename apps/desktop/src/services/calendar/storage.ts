@@ -467,27 +467,61 @@ export async function loadSessionsForTrackingIds(
           ) AS started_at
         FROM sessions AS session
         LEFT JOIN events AS event
-          ON event.deleted_at IS NULL
-          AND (
-            event.id = session.event_id
-            OR (
-              NULLIF(session.event_id, '') IS NULL
-              AND event.tracking_id_event = COALESCE(
-                CASE
-                  WHEN json_valid(session.event_json)
-                  THEN NULLIF(
-                    CAST(
-                      json_extract(session.event_json, '$.tracking_id')
-                      AS TEXT
-                    ),
+          ON event.id = COALESCE(
+            NULLIF(session.event_id, ''),
+            (
+              SELECT candidate.id
+              FROM events AS candidate
+              WHERE candidate.deleted_at IS NULL
+                AND candidate.tracking_id_event = COALESCE(
+                  CASE
+                    WHEN json_valid(session.event_json)
+                    THEN NULLIF(
+                      CAST(
+                        json_extract(session.event_json, '$.tracking_id')
+                        AS TEXT
+                      ),
+                      ''
+                    )
+                    ELSE NULL
+                  END,
+                  NULLIF(session.external_event_id, '')
+                )
+                AND (
+                  COALESCE(
+                    CASE
+                      WHEN json_valid(session.event_json)
+                      THEN NULLIF(
+                        CAST(
+                          json_extract(session.event_json, '$.calendar_id')
+                          AS TEXT
+                        ),
+                        ''
+                      )
+                      ELSE NULL
+                    END,
+                    ''
+                  ) = ''
+                  OR candidate.calendar_id = COALESCE(
+                    CASE
+                      WHEN json_valid(session.event_json)
+                      THEN NULLIF(
+                        CAST(
+                          json_extract(session.event_json, '$.calendar_id')
+                          AS TEXT
+                        ),
+                        ''
+                      )
+                      ELSE NULL
+                    END,
                     ''
                   )
-                  ELSE NULL
-                END,
-                NULLIF(session.external_event_id, '')
-              )
+                )
+              ORDER BY candidate.created_at, candidate.id
+              LIMIT 1
             )
           )
+          AND event.deleted_at IS NULL
         WHERE session.deleted_at IS NULL
       ) AS session_with_event
       WHERE tracking_id IN (${placeholders(ids.length)})

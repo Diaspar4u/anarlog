@@ -215,11 +215,15 @@ describe("calendar SQLite storage", () => {
       },
     ]);
     expect(mocks.execute.mock.calls[0][0]).toContain(
-      "NULLIF(session.event_id, '') IS NULL",
+      "NULLIF(session.event_id, '')",
     );
     expect(mocks.execute.mock.calls[0][0]).toContain(
-      "event.tracking_id_event = COALESCE",
+      "candidate.calendar_id = COALESCE",
     );
+    expect(mocks.execute.mock.calls[0][0]).toContain(
+      "ORDER BY candidate.created_at, candidate.id",
+    );
+    expect(mocks.execute.mock.calls[0][0]).toContain("LIMIT 1");
   });
 
   test("commits event, session, human, and participant writes together", async () => {
