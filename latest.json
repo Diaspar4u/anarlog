@@ -1,11 +1,11 @@
 {
-  "version": "1.4.21-ads.3",
-  "notes": "Maintained Anarlog 1.4.21-ads.3",
-  "pub_date": "2026-09-14T18:31:10Z",
+  "version": "1.4.21-ads.4",
+  "notes": "Maintained Anarlog 1.4.21-ads.4",
+  "pub_date": "2026-09-14T22:06:39Z",
   "platforms": {
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTRHdPV0NlSnkrekkrdnNDUXRNNHU4aDZFWk1ndmhiRGl0b1JpdG5sU2VGQWRDYi8rRHhlakdkRDI5N2lIWjN3WURQWllUcVlSbmN3MlJ1aERPaHF0ZUszSm8rK3pCTnd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5NDEwNTI4CWZpbGU6QW5hcmxvZy5hcHAudGFyLmd6Cm1WdUJtNlQ4NEFSQUF5cHdYTlAvWXNaNFluL2tmSG03Mk5PZU41clRldFQ2R1hwOWV3ZG1FN2Fqb0pjTGl3VkV1ZW05bnVqTEJ4UXU2NDI0WnZRM0JBPT0K",
-      "url": "https://github.com/Diaspar4u/anarlog/releases/download/anarlog-v1.4.21-ads.3/Anarlog-1.4.21-ads.3-macos-aarch64.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTRHdPV0NlSnkrek5lNDVwbEovNzY4d3hUbng0eCtFb05rM1VkTXI5UXFHTE1sei82NFRJMGY3OXlHdjBFT1k4SVZjUmZ1MFlMVUtnV1E0cXpyWlJKSm9QNkxaNlVMTEFvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5NDIxNTA3CWZpbGU6QW5hcmxvZy5hcHAudGFyLmd6CjF1NjZxQ1Fvc3dNek1Hb2QvQlBTVTZEU053cTcwVk9qM2NOUTZvMldCeWZnRWh1ZUFmNFpFRmZrYkliT2NxWjZGWnpKMFJ0RlJJMTJ3T2x5OG1Ld0FRPT0K",
+      "url": "https://github.com/Diaspar4u/anarlog/releases/download/anarlog-v1.4.21-ads.4/Anarlog-1.4.21-ads.4-macos-aarch64.app.tar.gz"
     }
   }
 }
