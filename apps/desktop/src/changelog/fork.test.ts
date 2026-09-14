@@ -27,6 +27,14 @@ describe("getForkChangelog", () => {
     expect(content).toContain("pausing and resuming capture");
   });
 
+  it("returns correction notes for Apple Calendar deduplication", () => {
+    const content = getForkChangelog("1.4.21-ads.2");
+
+    expect(content).toContain("cancelled Apple Calendar events");
+    expect(content).toContain("one calendar entry and one notification");
+    expect(content).toContain("Preserve linked meeting notes");
+  });
+
   it.each(EXCLUDED_FEATURES)(
     "omits removed or unused feature: %s",
     (feature) => {
