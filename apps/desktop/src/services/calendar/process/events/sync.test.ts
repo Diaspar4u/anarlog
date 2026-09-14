@@ -278,10 +278,7 @@ describe("syncEvents", () => {
       ),
     );
 
-    const first = syncEvents(createMockCtx(), syncInput({ incoming }));
-    expect(first.toAdd).toHaveLength(9);
-
-    const existing = first.toAdd.map((event, index) =>
+    const existing = incoming.map((event, index) =>
       createExistingEvent({
         ...event,
         id: `event-${index}`,
@@ -291,15 +288,23 @@ describe("syncEvents", () => {
         ended_at: event.ended_at ?? "",
       }),
     );
-    const second = syncEvents(
+    const first = syncEvents(
       createMockCtx(),
       syncInput({ incoming, existing }),
+    );
+    expect(first.toAdd).toEqual([]);
+    expect(first.toUpdate).toHaveLength(9);
+    expect(first.toDelete).toHaveLength(15);
+
+    const second = syncEvents(
+      createMockCtx(),
+      syncInput({ incoming, existing: first.toUpdate }),
     );
 
     expect(second.toAdd).toEqual([]);
     expect(second.toDelete).toEqual([]);
     expect(second.toUpdate.map((event) => event.id)).toEqual(
-      existing.map((event) => event.id),
+      first.toUpdate.map((event) => event.id),
     );
   });
 
