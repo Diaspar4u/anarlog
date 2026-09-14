@@ -128,6 +128,11 @@ pub fn convert_apple_events(events: Vec<AppleEvent>) -> Vec<CalendarEvent> {
 
 fn convert_google_event(event: GoogleEvent, calendar_id: &str) -> CalendarEvent {
     let raw = serde_json::to_string(&event).unwrap_or_default();
+    let provider_modified_at = event
+        .updated
+        .as_ref()
+        .or(event.created.as_ref())
+        .map(|date| date.to_rfc3339());
 
     let is_all_day = event
         .start
@@ -177,7 +182,7 @@ fn convert_google_event(event: GoogleEvent, calendar_id: &str) -> CalendarEvent 
         calendar_id: calendar_id.to_string(),
         provider: CalendarProviderType::Google,
         external_id: event.ical_uid.unwrap_or_default(),
-        occurrence_at: None,
+        provider_modified_at,
         title: event.summary.unwrap_or_default(),
         description: event.description,
         location: event.location,
@@ -198,6 +203,11 @@ fn convert_google_event(event: GoogleEvent, calendar_id: &str) -> CalendarEvent 
 
 fn convert_outlook_event(event: OutlookEvent, calendar_id: &str) -> CalendarEvent {
     let raw = serde_json::to_string(&event).unwrap_or_default();
+    let provider_modified_at = event
+        .last_modified_date_time
+        .as_ref()
+        .or(event.created_date_time.as_ref())
+        .map(|date| date.to_rfc3339());
     let is_all_day = event.is_all_day.unwrap_or(false);
 
     let started_at = event
@@ -253,7 +263,7 @@ fn convert_outlook_event(event: OutlookEvent, calendar_id: &str) -> CalendarEven
         calendar_id: calendar_id.to_string(),
         provider: CalendarProviderType::Outlook,
         external_id: event.ical_uid.unwrap_or_default(),
-        occurrence_at: None,
+        provider_modified_at,
         title: event.subject.unwrap_or_default(),
         description,
         location,
@@ -274,8 +284,18 @@ fn convert_outlook_event(event: OutlookEvent, calendar_id: &str) -> CalendarEven
 
 fn convert_apple_event(event: AppleEvent) -> CalendarEvent {
     let raw = serde_json::to_string(&event).unwrap_or_default();
-    let id = apple_event_id(&event);
-    let occurrence_at = event.occurrence_date.as_ref().map(|date| date.to_rfc3339());
+    let id = if event.has_recurrence_rules {
+        let date = event.occurrence_date.as_ref().unwrap_or(&event.start_date);
+        let day = local_date_string(date, event.time_zone.as_deref());
+        format!("{}:{}", event.event_identifier, day)
+    } else {
+        event.event_identifier.clone()
+    };
+    let provider_modified_at = event
+        .last_modified_date
+        .as_ref()
+        .or(event.creation_date.as_ref())
+        .map(|date| date.to_rfc3339());
 
     let organizer = event.organizer.as_ref().map(convert_person);
     let attendees = event.attendees.iter().map(convert_apple_attendee).collect();
@@ -300,7 +320,7 @@ fn convert_apple_event(event: AppleEvent) -> CalendarEvent {
         calendar_id: event.calendar.id,
         provider: CalendarProviderType::Apple,
         external_id: event.external_identifier,
-        occurrence_at,
+        provider_modified_at,
         title: event.title,
         description: event.notes,
         location: event.location,
@@ -317,25 +337,6 @@ fn convert_apple_event(event: AppleEvent) -> CalendarEvent {
         recurring_event_id,
         raw,
     }
-}
-
-fn apple_event_id(event: &AppleEvent) -> String {
-    if !event.has_recurrence_rules && !event.is_detached {
-        return event.event_identifier.clone();
-    }
-
-    let occurrence = event.occurrence_date.as_ref().unwrap_or(&event.start_date);
-    let day = local_date_string(occurrence, event.time_zone.as_deref());
-    let stable_id = [
-        event.external_identifier.as_str(),
-        event.calendar_item_identifier.as_str(),
-        event.event_identifier.as_str(),
-    ]
-    .into_iter()
-    .find(|value| !value.is_empty())
-    .unwrap_or_default();
-
-    format!("{stable_id}:{day}")
 }
 
 // Graph stores timed start/end as a timezone-naive `{date}T{time}` plus a
@@ -606,79 +607,6 @@ fn resolve_meeting_link(
     provider_link
         .or_else(|| location.and_then(crate::parse_meeting_link))
         .or_else(|| description.and_then(crate::parse_meeting_link))
-}
-
-#[cfg(test)]
-mod apple_identity_tests {
-    use super::*;
-    use serde_json::{Value, json};
-
-    fn apple_event(overrides: Value) -> AppleEvent {
-        let mut values: Vec<Value> = serde_json::from_str(include_str!(
-            "../../apple-calendar/src/fixture/data/default/base/events.json"
-        ))
-        .expect("Apple event fixture must deserialize");
-        let mut value = values.remove(0);
-
-        for (key, update) in overrides.as_object().expect("overrides must be an object") {
-            value[key] = update.clone();
-        }
-
-        serde_json::from_value(value).expect("test Apple event must deserialize")
-    }
-
-    #[test]
-    fn recurring_and_detached_forms_share_one_occurrence_id() {
-        let recurring = apple_event(json!({
-            "event_identifier": "external-1:series-a",
-            "calendar_item_identifier": "calendar-item-1",
-            "external_identifier": "external-1",
-            "has_recurrence_rules": true,
-            "recurrence": {
-                "series_identifier": "series-a",
-                "has_recurrence_rules": true,
-                "occurrence": {
-                    "original_start": "2026-09-21T18:00:00Z",
-                    "is_detached": false
-                },
-                "rules": []
-            },
-            "occurrence_date": "2026-09-21T18:00:00Z"
-        }));
-        let detached = apple_event(json!({
-            "event_identifier": "external-1:series-b/RID=811101600",
-            "external_identifier": "external-1",
-            "occurrence_date": "2026-09-21T18:00:00Z",
-            "is_detached": true
-        }));
-
-        assert_eq!(apple_event_id(&recurring), "external-1:2026-09-21");
-        assert_eq!(apple_event_id(&detached), "external-1:2026-09-21");
-        assert_eq!(
-            convert_apple_event(detached).occurrence_at.as_deref(),
-            Some("2026-09-21T18:00:00+00:00")
-        );
-    }
-
-    #[test]
-    fn occurrence_id_falls_back_to_the_calendar_item_identifier() {
-        let event = apple_event(json!({
-            "external_identifier": "",
-            "occurrence_date": "2026-09-21T18:00:00Z",
-            "is_detached": true
-        }));
-
-        assert_eq!(apple_event_id(&event), "fixture-item-1:2026-09-21");
-    }
-
-    #[test]
-    fn standalone_event_keeps_its_eventkit_identifier() {
-        let event = apple_event(json!({
-            "event_identifier": "standalone-event"
-        }));
-
-        assert_eq!(apple_event_id(&event), "standalone-event");
-    }
 }
 
 #[cfg(test)]

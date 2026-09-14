@@ -155,31 +155,34 @@ describe("syncEvents", () => {
     expect(result.toAdd).toEqual([]);
   });
 
-  test("keeps one durable row when EventKit replaces a recurring series id", () => {
+  test("keeps one durable row for an exact visible Apple occurrence", () => {
     const result = syncEvents(
       createMockCtx(),
       syncInput({
         incoming: [
           createIncomingEvent({
-            tracking_id_event: "external-1:new-series:2024-01-15",
-            external_id: "external-1",
-            recurrence_series_id: "new-series",
+            tracking_id_event: "current-series:2024-01-15",
+            recurrence_series_id: "current-series",
             has_recurrence_rules: true,
-            title: "Updated planning",
+            title: "Team planning",
+            provider_modified_at: "2024-01-12T00:00:00Z",
           }),
         ],
         existing: [
           createExistingEvent({
             id: "event-with-session",
-            tracking_id_event: "external-1:old-series:2024-01-15",
+            tracking_id_event: "old-series:2024-01-15",
             recurrence_series_id: "old-series",
             has_recurrence_rules: true,
+            title: "Team planning",
+            deleted_at: "2024-01-10T00:00:00Z",
           }),
           createExistingEvent({
             id: "event-duplicate",
-            tracking_id_event: "external-1:other-series:2024-01-15",
+            tracking_id_event: "other-series:2024-01-15",
             recurrence_series_id: "other-series",
             has_recurrence_rules: true,
+            title: "Team planning",
           }),
         ],
       }),
@@ -188,89 +191,93 @@ describe("syncEvents", () => {
     expect(result.toUpdate).toHaveLength(1);
     expect(result.toUpdate[0]).toMatchObject({
       id: "event-with-session",
-      tracking_id_event: "external-1:new-series:2024-01-15",
-      title: "Updated planning",
+      tracking_id_event: "current-series:2024-01-15",
+      title: "Team planning",
     });
     expect(result.toDelete).toEqual(["event-duplicate"]);
     expect(result.toAdd).toEqual([]);
   });
 
-  test("migrates a detached EventKit occurrence into its stable identity", () => {
+  test("chooses the newest provider record for duplicate incoming events", () => {
     const result = syncEvents(
       createMockCtx(),
       syncInput({
         incoming: [
           createIncomingEvent({
-            tracking_id_event: "external-1:2026-09-14",
-            external_id: "external-1",
-            occurrence_at: "2026-09-15T05:00:00Z",
-            has_recurrence_rules: false,
-            started_at: "2026-09-16T05:00:00Z",
+            tracking_id_event: "old-series:2024-01-15",
+            title: "Team planning",
+            has_recurrence_rules: true,
+            provider_modified_at: "2024-01-01T00:00:00Z",
           }),
-        ],
-        existing: [
-          createExistingEvent({
-            id: "detached-event",
-            tracking_id_event: "external-1:series-b/RID=811141200",
-            recurrence_series_id: "",
-            has_recurrence_rules: false,
-            started_at: "2026-09-16T05:00:00Z",
+          createIncomingEvent({
+            tracking_id_event: "current-series:2024-01-15",
+            title: "Team planning",
+            has_recurrence_rules: true,
+            provider_modified_at: "2024-01-12T00:00:00Z",
           }),
         ],
       }),
     );
 
-    expect(result.toUpdate).toHaveLength(1);
-    expect(result.toUpdate[0]).toMatchObject({
-      id: "detached-event",
-      tracking_id_event: "external-1:2026-09-14",
-    });
-    expect(result.toDelete).toEqual([]);
-    expect(result.toAdd).toEqual([]);
+    expect(result.toAdd.map((event) => event.tracking_id_event)).toEqual([
+      "current-series:2024-01-15",
+    ]);
   });
 
-  test("migrates a pre-SQLite recurring id ending in the series id", () => {
-    const result = syncEvents(
-      createMockCtx(),
-      syncInput({
-        incoming: [
-          createIncomingEvent({
-            tracking_id_event: "external-1:2024-01-15",
-            external_id: "external-1",
-            recurrence_series_id: "new-series",
-            has_recurrence_rules: true,
-          }),
-        ],
-        existing: [
-          createExistingEvent({
-            id: "legacy-event",
-            tracking_id_event: "external-1:old-series",
-            recurrence_series_id: "old-series",
-            has_recurrence_rules: true,
-          }),
-        ],
-      }),
+  test("replays the nine live duplicate groups without row growth", () => {
+    const groupSizes = [2, 4, 3, 2, 2, 3, 3, 2, 3];
+    const incoming = groupSizes.flatMap((size, groupIndex) =>
+      Array.from({ length: size }, (_, variantIndex) =>
+        createIncomingEvent({
+          tracking_id_event: `group-${groupIndex}-series-${variantIndex}`,
+          title: `Captured meeting ${groupIndex}`,
+          started_at: `2024-01-${String(groupIndex + 10).padStart(2, "0")}T10:00:00Z`,
+          ended_at: `2024-01-${String(groupIndex + 10).padStart(2, "0")}T11:00:00Z`,
+          has_recurrence_rules: true,
+          provider_modified_at: `2024-01-${String(variantIndex + 1).padStart(2, "0")}T00:00:00Z`,
+        }),
+      ),
     );
 
-    expect(result.toUpdate.map((event) => event.id)).toEqual(["legacy-event"]);
-    expect(result.toAdd).toEqual([]);
+    const first = syncEvents(createMockCtx(), syncInput({ incoming }));
+    expect(first.toAdd).toHaveLength(9);
+
+    const existing = first.toAdd.map((event, index) =>
+      createExistingEvent({
+        ...event,
+        id: `event-${index}`,
+        calendar_id: "cal-1",
+        title: event.title ?? "",
+        started_at: event.started_at ?? "",
+        ended_at: event.ended_at ?? "",
+      }),
+    );
+    const second = syncEvents(
+      createMockCtx(),
+      syncInput({ incoming, existing }),
+    );
+
+    expect(second.toAdd).toEqual([]);
+    expect(second.toDelete).toEqual([]);
+    expect(second.toUpdate.map((event) => event.id)).toEqual(
+      existing.map((event) => event.id),
+    );
   });
 
-  test("keeps distinct occurrences from one recurring event", () => {
+  test("keeps visibly different Apple occurrences distinct", () => {
     const result = syncEvents(
       createMockCtx(),
       syncInput({
         incoming: [
           createIncomingEvent({
-            tracking_id_event: "external-1:series-a:2024-01-15",
-            external_id: "external-1",
-            recurrence_series_id: "series-a",
+            tracking_id_event: "series-a:2024-01-15",
+            title: "Team planning",
             has_recurrence_rules: true,
           }),
           createIncomingEvent({
-            tracking_id_event: "external-1:series-b:2024-01-22",
-            external_id: "external-1",
-            recurrence_series_id: "series-b",
+            tracking_id_event: "series-b:2024-01-15",
+            title: "Team planning",
+            ended_at: "2024-01-15T11:30:00Z",
             has_recurrence_rules: true,
           }),
         ],
@@ -278,35 +285,36 @@ describe("syncEvents", () => {
     );
 
     expect(result.toAdd.map((event) => event.tracking_id_event)).toEqual([
-      "external-1:series-a:2024-01-15",
-      "external-1:series-b:2024-01-22",
+      "series-a:2024-01-15",
+      "series-b:2024-01-15",
     ]);
   });
 
-  test("adds only one row for replacement series of the same occurrence", () => {
+  test("keeps matching-looking Apple occurrences from different calendars", () => {
     const result = syncEvents(
-      createMockCtx(),
+      createMockCtx({
+        calendarIds: new Set(["cal-1", "cal-2"]),
+        calendarTrackingIdToId: new Map([
+          ["tracking-cal-1", "cal-1"],
+          ["tracking-cal-2", "cal-2"],
+        ]),
+      }),
       syncInput({
         incoming: [
           createIncomingEvent({
-            tracking_id_event: "external-1:old-series:2024-01-15",
-            external_id: "external-1",
-            recurrence_series_id: "old-series",
-            has_recurrence_rules: true,
+            tracking_id_event: "calendar-1-event",
+            title: "Team planning",
           }),
           createIncomingEvent({
-            tracking_id_event: "external-1:new-series:2024-01-15",
-            external_id: "external-1",
-            recurrence_series_id: "new-series",
-            has_recurrence_rules: true,
+            tracking_id_event: "calendar-2-event",
+            tracking_id_calendar: "tracking-cal-2",
+            title: "Team planning",
           }),
         ],
       }),
     );
 
-    expect(result.toAdd.map((event) => event.tracking_id_event)).toEqual([
-      "external-1:new-series:2024-01-15",
-    ]);
+    expect(result.toAdd).toHaveLength(2);
   });
 
   describe("removed calendar cleanup", () => {

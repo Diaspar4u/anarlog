@@ -42,9 +42,10 @@ function makeSession(
     eventJson: JSON.stringify(event),
     trackingId: event.tracking_id,
     calendarId: event.calendar_id,
-    recurrenceSeriesId: event.recurrence_series_id ?? "",
-    hasRecurrenceRules: event.has_recurrence_rules,
+    title: event.title,
     startedAt: event.started_at,
+    endedAt: event.ended_at,
+    isAllDay: event.is_all_day,
   };
 }
 
@@ -110,17 +111,17 @@ describe("syncSessionEmbeddedEvents", () => {
       [
         makeIncomingEvent({
           tracking_id_event: "external-1:old-series:2024-01-15",
-          external_id: "external-1",
           recurrence_series_id: "old-series",
           has_recurrence_rules: true,
-          title: "Stale planning",
+          title: "Team planning",
+          provider_modified_at: "2024-01-01T00:00:00Z",
         }),
         makeIncomingEvent({
           tracking_id_event: "external-1:new-series:2024-01-15",
-          external_id: "external-1",
           recurrence_series_id: "new-series",
           has_recurrence_rules: true,
-          title: "Updated planning",
+          title: "Team planning",
+          provider_modified_at: "2024-01-12T00:00:00Z",
         }),
       ],
       [
@@ -129,13 +130,12 @@ describe("syncSessionEmbeddedEvents", () => {
             "session-1",
             makeSessionEvent({
               tracking_id: "external-1:old-series:2024-01-15",
+              title: "Team planning",
               recurrence_series_id: "old-series",
               has_recurrence_rules: true,
             }),
           ),
           calendarId: "cal-1",
-          recurrenceSeriesId: "old-series",
-          hasRecurrenceRules: true,
         },
       ],
     );
@@ -144,7 +144,7 @@ describe("syncSessionEmbeddedEvents", () => {
     expect(updates[0].trackingId).toBe("external-1:new-series:2024-01-15");
     expect(JSON.parse(updates[0].eventJson)).toMatchObject({
       tracking_id: "external-1:new-series:2024-01-15",
-      title: "Updated planning",
+      title: "Team planning",
     });
   });
 
@@ -154,10 +154,10 @@ describe("syncSessionEmbeddedEvents", () => {
       [
         makeIncomingEvent({
           tracking_id_event: "external-1:2026-09-14",
-          external_id: "external-1",
-          occurrence_at: "2026-09-15T05:00:00Z",
           has_recurrence_rules: false,
+          title: "Team planning",
           started_at: "2026-09-16T05:00:00Z",
+          ended_at: "2026-09-16T06:00:00Z",
         }),
       ],
       [
@@ -166,11 +166,11 @@ describe("syncSessionEmbeddedEvents", () => {
             "session-1",
             makeSessionEvent({
               tracking_id: "external-1:series-b/RID=811141200",
+              title: "Team planning",
               started_at: "2026-09-16T05:00:00Z",
+              ended_at: "2026-09-16T06:00:00Z",
             }),
           ),
-          recurrenceSeriesId: "",
-          hasRecurrenceRules: false,
         },
       ],
     );
@@ -218,9 +218,10 @@ describe("syncSessionEmbeddedEvents", () => {
           eventJson: "",
           trackingId: "other-event",
           calendarId: "cal-1",
-          recurrenceSeriesId: "",
-          hasRecurrenceRules: false,
+          title: "",
           startedAt: "",
+          endedAt: "",
+          isAllDay: false,
         },
       ],
     );

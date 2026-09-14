@@ -44,9 +44,10 @@ type SessionSqlRow = {
   event_json: string;
   tracking_id: string;
   calendar_id: string;
-  recurrence_series_id: string;
-  has_recurrence_rules: boolean | number;
+  title: string;
   started_at: string;
+  ended_at: string;
+  is_all_day: boolean | number;
 };
 
 export type SessionSyncRow = {
@@ -55,9 +56,10 @@ export type SessionSyncRow = {
   eventJson: string;
   trackingId: string;
   calendarId: string;
-  recurrenceSeriesId: string;
-  hasRecurrenceRules: boolean;
+  title: string;
   startedAt: string;
+  endedAt: string;
+  isAllDay: boolean;
 };
 
 type HumanSqlRow = {
@@ -315,7 +317,6 @@ export async function tombstoneCalendarConnection(
 export async function loadEventsForSync(
   ctx: Ctx,
   incomingTrackingIds: Iterable<string>,
-  incomingExternalIds: Iterable<string> = [],
 ): Promise<ExistingEvent[]> {
   const calendarIds = Array.from(ctx.calendarIds);
   if (calendarIds.length === 0) return [];
@@ -325,16 +326,7 @@ export async function loadEventsForSync(
     trackingIds.length > 0
       ? `OR tracking_id_event IN (${placeholders(trackingIds.length)})`
       : "";
-  const externalIds =
-    ctx.provider === "apple"
-      ? Array.from(new Set(Array.from(incomingExternalIds).filter(Boolean)))
-      : [];
-  const externalClause =
-    externalIds.length > 0
-      ? `OR (${externalIds
-          .map(() => "instr(tracking_id_event, ? || ':') = 1")
-          .join(" OR ")})`
-      : "";
+
   const rows = await liveQueryClient.execute<EventSqlRow>(
     `
       SELECT
@@ -363,7 +355,7 @@ export async function loadEventsForSync(
               >= julianday(?)
           )
           ${incomingClause}
-          ${externalClause}
+
         )
       ORDER BY
         EXISTS (
@@ -381,7 +373,6 @@ export async function loadEventsForSync(
       ctx.to.toISOString(),
       ctx.from.toISOString(),
       ...trackingIds,
-      ...externalIds,
     ],
   );
 
@@ -406,9 +397,10 @@ export async function loadSessionsForTrackingIds(
         event_json,
         tracking_id,
         calendar_id,
-        recurrence_series_id,
-        has_recurrence_rules,
-        started_at
+        title,
+        started_at,
+        ended_at,
+        is_all_day
       FROM (
         SELECT
           session.id,
@@ -443,29 +435,14 @@ export async function loadSessionsForTrackingIds(
             CASE
               WHEN json_valid(session.event_json)
               THEN NULLIF(
-                CAST(
-                  json_extract(session.event_json, '$.recurrence_series_id')
-                  AS TEXT
-                ),
+                CAST(json_extract(session.event_json, '$.title') AS TEXT),
                 ''
               )
               ELSE NULL
             END,
-            NULLIF(event.recurrence_series_id, ''),
+            NULLIF(event.title, ''),
             ''
-          ) AS recurrence_series_id,
-          COALESCE(
-            CASE
-              WHEN json_valid(session.event_json)
-              THEN CAST(
-                json_extract(session.event_json, '$.has_recurrence_rules')
-                AS INTEGER
-              )
-              ELSE NULL
-            END,
-            event.has_recurrence_rules,
-            0
-          ) AS has_recurrence_rules,
+          ) AS title,
           COALESCE(
             CASE
               WHEN json_valid(session.event_json)
@@ -477,70 +454,34 @@ export async function loadSessionsForTrackingIds(
             END,
             NULLIF(event.started_at, ''),
             ''
-          ) AS started_at
+          ) AS started_at,
+          COALESCE(
+            CASE
+              WHEN json_valid(session.event_json)
+              THEN NULLIF(
+                CAST(json_extract(session.event_json, '$.ended_at') AS TEXT),
+                ''
+              )
+              ELSE NULL
+            END,
+            NULLIF(event.ended_at, ''),
+            ''
+          ) AS ended_at,
+          COALESCE(
+            CASE
+              WHEN json_valid(session.event_json)
+              THEN CAST(
+                json_extract(session.event_json, '$.is_all_day')
+                AS INTEGER
+              )
+              ELSE NULL
+            END,
+            event.is_all_day,
+            0
+          ) AS is_all_day
         FROM sessions AS session
         LEFT JOIN events AS event
-          ON event.id = COALESCE(
-            (
-              SELECT active.id
-              FROM events AS active
-              WHERE active.id = session.event_id
-                AND active.deleted_at IS NULL
-              LIMIT 1
-            ),
-            (
-              SELECT candidate.id
-              FROM events AS candidate
-              WHERE candidate.deleted_at IS NULL
-                AND candidate.tracking_id_event = COALESCE(
-                  CASE
-                    WHEN json_valid(session.event_json)
-                    THEN NULLIF(
-                      CAST(
-                        json_extract(session.event_json, '$.tracking_id')
-                        AS TEXT
-                      ),
-                      ''
-                    )
-                    ELSE NULL
-                  END,
-                  NULLIF(session.external_event_id, '')
-                )
-                AND (
-                  COALESCE(
-                    CASE
-                      WHEN json_valid(session.event_json)
-                      THEN NULLIF(
-                        CAST(
-                          json_extract(session.event_json, '$.calendar_id')
-                          AS TEXT
-                        ),
-                        ''
-                      )
-                      ELSE NULL
-                    END,
-                    ''
-                  ) = ''
-                  OR candidate.calendar_id = COALESCE(
-                    CASE
-                      WHEN json_valid(session.event_json)
-                      THEN NULLIF(
-                        CAST(
-                          json_extract(session.event_json, '$.calendar_id')
-                          AS TEXT
-                        ),
-                        ''
-                      )
-                      ELSE NULL
-                    END,
-                    ''
-                  )
-                )
-              ORDER BY candidate.created_at, candidate.id
-              LIMIT 1
-            )
-          )
-          AND event.deleted_at IS NULL
+          ON event.id = session.event_id
         WHERE session.deleted_at IS NULL
       ) AS session_with_event
       WHERE tracking_id IN (${placeholders(ids.length)})
@@ -555,9 +496,10 @@ export async function loadSessionsForTrackingIds(
     eventJson: row.event_json,
     trackingId: row.tracking_id,
     calendarId: row.calendar_id,
-    recurrenceSeriesId: row.recurrence_series_id,
-    hasRecurrenceRules: Boolean(row.has_recurrence_rules),
+    title: row.title,
     startedAt: row.started_at,
+    endedAt: row.ended_at,
+    isAllDay: Boolean(row.is_all_day),
   }));
 }
 

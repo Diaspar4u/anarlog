@@ -103,8 +103,7 @@ function normalizeCalendarEvent(calendarEvent: CalendarEvent): {
     event: {
       tracking_id_event: calendarEvent.id,
       tracking_id_calendar: calendarEvent.calendar_id,
-      external_id: calendarEvent.external_id || undefined,
-      occurrence_at: calendarEvent.occurrence_at ?? undefined,
+      provider_modified_at: calendarEvent.provider_modified_at ?? undefined,
       title: calendarEvent.title,
       started_at: calendarEvent.started_at,
       ended_at: calendarEvent.ended_at,

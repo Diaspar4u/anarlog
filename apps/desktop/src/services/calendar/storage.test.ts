@@ -184,27 +184,7 @@ describe("calendar SQLite storage", () => {
     );
   });
 
-  test("loads Apple identity aliases outside the current sync window", async () => {
-    await loadEventsForSync(
-      {
-        provider: "apple",
-        connectionId: "apple",
-        from: new Date("2026-06-01T00:00:00.000Z"),
-        to: new Date("2026-06-02T00:00:00.000Z"),
-        calendarIds: new Set(["cal-work"]),
-        calendarTrackingIdToId: new Map([["primary", "cal-work"]]),
-      },
-      ["external-1:2026-06-01"],
-      ["external-1"],
-    );
-
-    expect(mocks.execute.mock.calls[0][0]).toContain(
-      "instr(tracking_id_event, ? || ':') = 1",
-    );
-    expect(mocks.execute.mock.calls[0][1]).toContain("external-1");
-  });
-
-  test("loads recurring identity fields for linked session migration", async () => {
+  test("loads visible identity fields from the directly linked event row", async () => {
     mocks.execute.mockResolvedValue([
       {
         id: "session-1",
@@ -212,9 +192,10 @@ describe("calendar SQLite storage", () => {
         event_json: "{}",
         tracking_id: "external-1:old-series:2026-06-01",
         calendar_id: "cal-work",
-        recurrence_series_id: "old-series",
-        has_recurrence_rules: 1,
+        title: "Team planning",
         started_at: "2026-06-01T10:00:00.000Z",
+        ended_at: "2026-06-01T11:00:00.000Z",
+        is_all_day: 0,
       },
     ]);
 
@@ -229,24 +210,15 @@ describe("calendar SQLite storage", () => {
         eventJson: "{}",
         trackingId: "external-1:old-series:2026-06-01",
         calendarId: "cal-work",
-        recurrenceSeriesId: "old-series",
-        hasRecurrenceRules: true,
+        title: "Team planning",
         startedAt: "2026-06-01T10:00:00.000Z",
+        endedAt: "2026-06-01T11:00:00.000Z",
+        isAllDay: false,
       },
     ]);
     expect(mocks.execute.mock.calls[0][0]).toContain(
-      "active.id = session.event_id",
+      "ON event.id = session.event_id",
     );
-    expect(mocks.execute.mock.calls[0][0]).toContain(
-      "active.deleted_at IS NULL",
-    );
-    expect(mocks.execute.mock.calls[0][0]).toContain(
-      "candidate.calendar_id = COALESCE",
-    );
-    expect(mocks.execute.mock.calls[0][0]).toContain(
-      "ORDER BY candidate.created_at, candidate.id",
-    );
-    expect(mocks.execute.mock.calls[0][0]).toContain("LIMIT 1");
   });
 
   test("commits event, session, human, and participant writes together", async () => {
