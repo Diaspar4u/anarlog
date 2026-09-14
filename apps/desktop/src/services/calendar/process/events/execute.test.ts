@@ -153,9 +153,10 @@ describe("syncSessionEmbeddedEvents", () => {
       createMockCtx(),
       [
         makeIncomingEvent({
-          tracking_id_event: "external-1:2024-01-15",
+          tracking_id_event: "external-1:2026-09-14",
           external_id: "external-1",
           has_recurrence_rules: false,
+          started_at: "2026-09-15T18:00:00Z",
         }),
       ],
       [
@@ -164,6 +165,7 @@ describe("syncSessionEmbeddedEvents", () => {
             "session-1",
             makeSessionEvent({
               tracking_id: "external-1:series-b/RID=811101600",
+              started_at: "2026-09-15T18:00:00Z",
             }),
           ),
           recurrenceSeriesId: "",
@@ -173,7 +175,35 @@ describe("syncSessionEmbeddedEvents", () => {
     );
 
     expect(updates).toHaveLength(1);
-    expect(updates[0].trackingId).toBe("external-1:2024-01-15");
+    expect(updates[0].trackingId).toBe("external-1:2026-09-14");
+  });
+
+  test("does not fall back to an event from another known calendar", () => {
+    const updates = syncSessionEmbeddedEvents(
+      createMockCtx({
+        calendarTrackingIdToId: new Map([
+          ["tracking-cal-1", "cal-1"],
+          ["tracking-cal-2", "cal-2"],
+        ]),
+      }),
+      [
+        makeIncomingEvent({
+          tracking_id_event: "shared-tracking-id",
+          tracking_id_calendar: "tracking-cal-2",
+        }),
+      ],
+      [
+        {
+          ...makeSession(
+            "session-1",
+            makeSessionEvent({ tracking_id: "shared-tracking-id" }),
+          ),
+          calendarId: "cal-1",
+        },
+      ],
+    );
+
+    expect(updates).toEqual([]);
   });
 
   test("skips sessions without a matching event", () => {
@@ -210,6 +240,7 @@ describe("syncSessionEmbeddedEvents", () => {
   test("resolves the canonical calendar id", () => {
     const updates = syncSessionEmbeddedEvents(
       createMockCtx({
+        calendarIds: new Set(["cal-new"]),
         calendarTrackingIdToId: new Map([["tracking-cal-new", "cal-new"]]),
       }),
       [makeIncomingEvent({ tracking_id_calendar: "tracking-cal-new" })],

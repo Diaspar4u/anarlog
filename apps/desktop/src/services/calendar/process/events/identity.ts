@@ -8,6 +8,8 @@ type EventIdentity = {
   started_at?: string;
 };
 
+const APPLE_REFERENCE_DATE_MS = Date.UTC(2001, 0, 1);
+
 export function calendarEventKey(
   provider: CalendarProviderType,
   calendarId: string,
@@ -31,6 +33,7 @@ function stableTrackingId(
 
   const occurrence =
     event.tracking_id_event.match(/:(\d{4}-\d{2}-\d{2})$/)?.[1] ??
+    detachedOccurrenceDate(event.tracking_id_event) ??
     event.started_at?.slice(0, 10);
   if (!occurrence) return event.tracking_id_event;
 
@@ -43,6 +46,11 @@ function stableTrackingId(
     if (seriesIndex >= 0) {
       return `${event.tracking_id_event.slice(0, seriesIndex)}:${occurrence}`;
     }
+
+    const seriesAtEnd = `:${event.recurrence_series_id}`;
+    if (event.tracking_id_event.endsWith(seriesAtEnd)) {
+      return `${event.tracking_id_event.slice(0, -seriesAtEnd.length)}:${occurrence}`;
+    }
   }
 
   const detachedSeriesIndex = event.tracking_id_event.indexOf(":");
@@ -51,4 +59,18 @@ function stableTrackingId(
   }
 
   return event.tracking_id_event;
+}
+
+function detachedOccurrenceDate(trackingId: string): string | undefined {
+  const seconds = Number(trackingId.match(/\/RID=(-?\d+(?:\.\d+)?)$/)?.[1]);
+  if (!Number.isFinite(seconds)) return undefined;
+
+  const date = new Date(APPLE_REFERENCE_DATE_MS + seconds * 1_000);
+  if (Number.isNaN(date.getTime())) return undefined;
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 }
