@@ -227,6 +227,42 @@ describe("syncEvents", () => {
     expect(result.toAdd[0].meeting_link).toBe("https://meet.example/current");
   });
 
+  test("migrates a stale stored row through a losing tracking alias", () => {
+    const result = syncEvents(
+      createMockCtx(),
+      syncInput({
+        incoming: [
+          createIncomingEvent({
+            tracking_id_event: "current-series",
+            title: "Team planning",
+            provider_modified_at: "2024-01-12T00:00:00Z",
+          }),
+          createIncomingEvent({
+            tracking_id_event: "old-series",
+            title: "Team planning",
+            provider_modified_at: "2024-01-01T00:00:00Z",
+          }),
+        ],
+        existing: [
+          createExistingEvent({
+            id: "stale-row",
+            tracking_id_event: "old-series",
+            title: "Stale embedded title",
+          }),
+        ],
+      }),
+    );
+
+    expect(result.toUpdate).toHaveLength(1);
+    expect(result.toUpdate[0]).toMatchObject({
+      id: "stale-row",
+      tracking_id_event: "current-series",
+      title: "Team planning",
+    });
+    expect(result.toAdd).toEqual([]);
+    expect(result.toDelete).toEqual([]);
+  });
+
   test("replays the nine live duplicate groups without row growth", () => {
     const groupSizes = [2, 4, 3, 2, 2, 3, 3, 2, 3];
     const incoming = groupSizes.flatMap((size, groupIndex) =>

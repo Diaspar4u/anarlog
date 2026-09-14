@@ -184,7 +184,7 @@ describe("calendar SQLite storage", () => {
     );
   });
 
-  test("loads visible identity fields from the directly linked event row", async () => {
+  test("maps visible identity fields and prefers the direct event link", async () => {
     mocks.execute.mockResolvedValue([
       {
         id: "session-1",
@@ -216,6 +216,9 @@ describe("calendar SQLite storage", () => {
         isAllDay: false,
       },
     ]);
+    expect(mocks.execute.mock.calls[0][0]).toContain(
+      "ON event.id = COALESCE(\n            NULLIF(session.event_id, ''),",
+    );
     expect(mocks.execute.mock.calls[0][0]).toContain("NULLIF(event.title, '')");
     expect(mocks.execute.mock.calls[0][0]).toContain(
       "NULLIF(event.started_at, '')",

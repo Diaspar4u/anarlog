@@ -65,11 +65,15 @@ export function buildIncomingEventIndex(
   }
 
   const expanded = new Map<string, IncomingEvent>();
-  for (const event of canonical.values()) {
+  for (const event of incoming) {
     const calendarId = calendarTrackingIdToId.get(event.tracking_id_calendar);
     if (!calendarId) continue;
+    const selected = canonical.get(
+      calendarEventKey(provider, calendarId, event),
+    );
+    if (!selected) continue;
     for (const key of calendarEventKeys(provider, calendarId, event)) {
-      expanded.set(key, event);
+      expanded.set(key, selected);
     }
   }
 
