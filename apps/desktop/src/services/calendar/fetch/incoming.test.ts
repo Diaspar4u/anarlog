@@ -129,7 +129,7 @@ describe("fetchIncomingEvents", () => {
     expect(result.participants.has("cancelled-recurring-event")).toBe(false);
   });
 
-  test("keeps Apple occurrence metadata needed for legacy migration", async () => {
+  test("keeps the provider modification time used to select a duplicate", async () => {
     calendarCommands.listEvents.mockResolvedValue({
       status: "success",
       data: [
@@ -142,7 +142,7 @@ describe("fetchIncomingEvents", () => {
           started_at: "2026-09-16T05:00:00.000Z",
           ended_at: "2026-09-16T06:00:00.000Z",
           timezone: "America/Los_Angeles",
-          occurrence_at: "2026-09-15T05:00:00Z",
+          provider_modified_at: "2026-09-14T12:00:00Z",
           status: "confirmed",
           attendees: [],
           organizer: null,
@@ -155,7 +155,7 @@ describe("fetchIncomingEvents", () => {
     const result = await fetchIncomingEvents({ ...ctx, provider: "apple" });
 
     expect(result.events[0]).toMatchObject({
-      occurrence_at: "2026-09-15T05:00:00Z",
+      provider_modified_at: "2026-09-14T12:00:00Z",
     });
   });
 });

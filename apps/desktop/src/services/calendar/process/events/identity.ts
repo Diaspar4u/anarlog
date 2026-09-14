@@ -4,21 +4,34 @@ import type { IncomingEvent } from "../../fetch/types";
 
 type EventIdentity = {
   tracking_id_event: string;
-  external_id?: string;
-  occurrence_at?: string;
-  recurrence_series_id?: string;
-  has_recurrence_rules: boolean;
+  title?: string;
   started_at?: string;
+  ended_at?: string;
+  is_all_day: boolean;
 };
-
-const APPLE_REFERENCE_DATE_MS = Date.UTC(2001, 0, 1);
 
 export function calendarEventKey(
   provider: CalendarProviderType,
   calendarId: string,
   event: EventIdentity,
 ): string {
-  return `${calendarId}\u0000${stableTrackingId(provider, event)}`;
+  if (provider === "apple") {
+    const title = event.title?.trim();
+    const startedAt = normalizedInstant(event.started_at);
+    const endedAt = normalizedInstant(event.ended_at);
+    if (title && startedAt && endedAt) {
+      return [
+        calendarId,
+        "visible",
+        title,
+        startedAt,
+        endedAt,
+        event.is_all_day ? "all-day" : "timed",
+      ].join("\u0000");
+    }
+  }
+
+  return trackingEventKey(calendarId, event.tracking_id_event);
 }
 
 export function calendarEventKeys(
@@ -26,16 +39,9 @@ export function calendarEventKeys(
   calendarId: string,
   event: EventIdentity,
 ): string[] {
-  const keys = [calendarEventKey(provider, calendarId, event)];
-  if (provider !== "apple") return keys;
-
-  const externalId = appleExternalId(event);
-  const occurrenceInstant = appleOccurrenceInstant(event);
-  if (externalId && occurrenceInstant) {
-    keys.push(`${calendarId}\u0000${externalId}\u0000${occurrenceInstant}`);
-  }
-
-  return Array.from(new Set(keys));
+  const trackingKey = trackingEventKey(calendarId, event.tracking_id_event);
+  const visibleKey = calendarEventKey(provider, calendarId, event);
+  return trackingKey === visibleKey ? [trackingKey] : [trackingKey, visibleKey];
 }
 
 export function buildIncomingEventIndex(
@@ -50,7 +56,12 @@ export function buildIncomingEventIndex(
   for (const event of incoming) {
     const calendarId = calendarTrackingIdToId.get(event.tracking_id_calendar);
     if (!calendarId) continue;
-    canonical.set(calendarEventKey(provider, calendarId, event), event);
+
+    const key = calendarEventKey(provider, calendarId, event);
+    const current = canonical.get(key);
+    if (!current || isNewerProviderRecord(event, current)) {
+      canonical.set(key, event);
+    }
   }
 
   const expanded = new Map<string, IncomingEvent>();
@@ -65,87 +76,34 @@ export function buildIncomingEventIndex(
   return { canonical, expanded };
 }
 
-function stableTrackingId(
-  provider: CalendarProviderType,
-  event: EventIdentity,
-): string {
-  if (
-    provider !== "apple" ||
-    event.tracking_id_event.includes("/RID=") ||
-    (!event.has_recurrence_rules &&
-      !/:\d{4}-\d{2}-\d{2}$/.test(event.tracking_id_event))
-  ) {
-    return event.tracking_id_event;
-  }
-
-  const occurrence =
-    event.tracking_id_event.match(/:(\d{4}-\d{2}-\d{2})$/)?.[1] ??
-    event.started_at?.slice(0, 10);
-  if (!occurrence) return event.tracking_id_event;
-
-  const externalId = event.external_id?.trim();
-  if (externalId) return `${externalId}:${occurrence}`;
-
-  if (event.recurrence_series_id) {
-    const seriesMarker = `:${event.recurrence_series_id}:`;
-    const seriesIndex = event.tracking_id_event.lastIndexOf(seriesMarker);
-    if (seriesIndex >= 0) {
-      return `${event.tracking_id_event.slice(0, seriesIndex)}:${occurrence}`;
-    }
-
-    const seriesAtEnd = `:${event.recurrence_series_id}`;
-    if (event.tracking_id_event.endsWith(seriesAtEnd)) {
-      return `${event.tracking_id_event.slice(0, -seriesAtEnd.length)}:${occurrence}`;
-    }
-  }
-
-  return event.tracking_id_event;
+function trackingEventKey(calendarId: string, trackingId: string): string {
+  return `${calendarId}\u0000tracking\u0000${trackingId}`;
 }
 
-function appleExternalId(event: EventIdentity): string | undefined {
-  const externalId = event.external_id?.trim();
-  if (externalId) return externalId;
-
-  const detachedSeriesIndex = event.tracking_id_event.indexOf(":");
-  if (event.tracking_id_event.includes("/RID=") && detachedSeriesIndex >= 0) {
-    return event.tracking_id_event.slice(0, detachedSeriesIndex);
-  }
-
-  if (event.recurrence_series_id) {
-    const seriesMarker = `:${event.recurrence_series_id}:`;
-    const seriesIndex = event.tracking_id_event.lastIndexOf(seriesMarker);
-    if (seriesIndex >= 0) return event.tracking_id_event.slice(0, seriesIndex);
-
-    const seriesAtEnd = `:${event.recurrence_series_id}`;
-    if (event.tracking_id_event.endsWith(seriesAtEnd)) {
-      return event.tracking_id_event.slice(0, -seriesAtEnd.length);
-    }
-  }
-
-  const occurrenceSeparator = event.tracking_id_event.lastIndexOf(":");
-  if (
-    occurrenceSeparator >= 0 &&
-    /^\d{4}-\d{2}-\d{2}$/.test(
-      event.tracking_id_event.slice(occurrenceSeparator + 1),
-    )
-  ) {
-    return event.tracking_id_event.slice(0, occurrenceSeparator);
-  }
-
-  return undefined;
+function normalizedInstant(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const instant = Date.parse(value);
+  return Number.isFinite(instant) ? String(instant) : value;
 }
 
-function appleOccurrenceInstant(event: EventIdentity): string | undefined {
-  if (event.occurrence_at) {
-    const occurrenceMs = Date.parse(event.occurrence_at);
-    if (Number.isFinite(occurrenceMs)) return String(occurrenceMs);
+function isNewerProviderRecord(
+  candidate: IncomingEvent,
+  current: IncomingEvent,
+): boolean {
+  const candidateModified = Date.parse(candidate.provider_modified_at ?? "");
+  const currentModified = Date.parse(current.provider_modified_at ?? "");
+
+  if (Number.isFinite(candidateModified) && Number.isFinite(currentModified)) {
+    if (candidateModified !== currentModified) {
+      return candidateModified > currentModified;
+    }
+  } else if (Number.isFinite(candidateModified)) {
+    return true;
+  } else if (Number.isFinite(currentModified)) {
+    return false;
   }
 
-  const rid = event.tracking_id_event.match(/\/RID=(-?\d+(?:\.\d+)?)$/)?.[1];
-  if (!rid) return undefined;
-
-  const seconds = Number(rid);
-  if (!Number.isFinite(seconds)) return undefined;
-
-  return String(APPLE_REFERENCE_DATE_MS + seconds * 1_000);
+  return (
+    candidate.tracking_id_event.localeCompare(current.tracking_id_event) > 0
+  );
 }

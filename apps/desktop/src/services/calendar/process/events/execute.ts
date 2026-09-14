@@ -34,9 +34,10 @@ export function syncSessionEmbeddedEvents(
       session.calendarId && hasActiveCalendar
         ? calendarEventKeys(ctx.provider, session.calendarId, {
             tracking_id_event: session.trackingId,
-            recurrence_series_id: session.recurrenceSeriesId,
-            has_recurrence_rules: session.hasRecurrenceRules,
+            title: session.title,
             started_at: session.startedAt,
+            ended_at: session.endedAt,
+            is_all_day: session.isAllDay,
           })
             .map((key) => incomingByKey.get(key))
             .find((event) => event !== undefined)
