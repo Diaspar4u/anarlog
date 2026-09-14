@@ -155,6 +155,130 @@ describe("syncEvents", () => {
     expect(result.toAdd).toEqual([]);
   });
 
+  test("keeps one durable row when EventKit replaces a recurring series id", () => {
+    const result = syncEvents(
+      createMockCtx(),
+      syncInput({
+        incoming: [
+          createIncomingEvent({
+            tracking_id_event: "external-1:new-series:2024-01-15",
+            external_id: "external-1",
+            recurrence_series_id: "new-series",
+            has_recurrence_rules: true,
+            title: "Updated planning",
+          }),
+        ],
+        existing: [
+          createExistingEvent({
+            id: "event-with-session",
+            tracking_id_event: "external-1:old-series:2024-01-15",
+            recurrence_series_id: "old-series",
+            has_recurrence_rules: true,
+          }),
+          createExistingEvent({
+            id: "event-duplicate",
+            tracking_id_event: "external-1:other-series:2024-01-15",
+            recurrence_series_id: "other-series",
+            has_recurrence_rules: true,
+          }),
+        ],
+      }),
+    );
+
+    expect(result.toUpdate).toHaveLength(1);
+    expect(result.toUpdate[0]).toMatchObject({
+      id: "event-with-session",
+      tracking_id_event: "external-1:new-series:2024-01-15",
+      title: "Updated planning",
+    });
+    expect(result.toDelete).toEqual(["event-duplicate"]);
+    expect(result.toAdd).toEqual([]);
+  });
+
+  test("migrates a detached EventKit occurrence into its stable identity", () => {
+    const result = syncEvents(
+      createMockCtx(),
+      syncInput({
+        incoming: [
+          createIncomingEvent({
+            tracking_id_event: "external-1:2024-01-15",
+            external_id: "external-1",
+            has_recurrence_rules: false,
+          }),
+        ],
+        existing: [
+          createExistingEvent({
+            id: "detached-event",
+            tracking_id_event: "external-1:series-b/RID=811101600",
+            recurrence_series_id: "",
+            has_recurrence_rules: false,
+          }),
+        ],
+      }),
+    );
+
+    expect(result.toUpdate).toHaveLength(1);
+    expect(result.toUpdate[0]).toMatchObject({
+      id: "detached-event",
+      tracking_id_event: "external-1:2024-01-15",
+    });
+    expect(result.toDelete).toEqual([]);
+    expect(result.toAdd).toEqual([]);
+  });
+
+  test("keeps distinct occurrences from one recurring event", () => {
+    const result = syncEvents(
+      createMockCtx(),
+      syncInput({
+        incoming: [
+          createIncomingEvent({
+            tracking_id_event: "external-1:series-a:2024-01-15",
+            external_id: "external-1",
+            recurrence_series_id: "series-a",
+            has_recurrence_rules: true,
+          }),
+          createIncomingEvent({
+            tracking_id_event: "external-1:series-b:2024-01-22",
+            external_id: "external-1",
+            recurrence_series_id: "series-b",
+            has_recurrence_rules: true,
+          }),
+        ],
+      }),
+    );
+
+    expect(result.toAdd.map((event) => event.tracking_id_event)).toEqual([
+      "external-1:series-a:2024-01-15",
+      "external-1:series-b:2024-01-22",
+    ]);
+  });
+
+  test("adds only one row for replacement series of the same occurrence", () => {
+    const result = syncEvents(
+      createMockCtx(),
+      syncInput({
+        incoming: [
+          createIncomingEvent({
+            tracking_id_event: "external-1:old-series:2024-01-15",
+            external_id: "external-1",
+            recurrence_series_id: "old-series",
+            has_recurrence_rules: true,
+          }),
+          createIncomingEvent({
+            tracking_id_event: "external-1:new-series:2024-01-15",
+            external_id: "external-1",
+            recurrence_series_id: "new-series",
+            has_recurrence_rules: true,
+          }),
+        ],
+      }),
+    );
+
+    expect(result.toAdd.map((event) => event.tracking_id_event)).toEqual([
+      "external-1:new-series:2024-01-15",
+    ]);
+  });
+
   describe("removed calendar cleanup", () => {
     test("deletes events when calendar removed from Apple Calendar (no incoming events)", () => {
       const ctx = createMockCtx({
