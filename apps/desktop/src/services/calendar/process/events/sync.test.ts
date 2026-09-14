@@ -204,16 +204,18 @@ describe("syncEvents", () => {
       syncInput({
         incoming: [
           createIncomingEvent({
-            tracking_id_event: "old-series:2024-01-15",
-            title: "Team planning",
-            has_recurrence_rules: true,
-            provider_modified_at: "2024-01-01T00:00:00Z",
-          }),
-          createIncomingEvent({
             tracking_id_event: "current-series:2024-01-15",
             title: "Team planning",
             has_recurrence_rules: true,
+            meeting_link: "https://meet.example/current",
             provider_modified_at: "2024-01-12T00:00:00Z",
+          }),
+          createIncomingEvent({
+            tracking_id_event: "old-series:2024-01-15",
+            title: "Team planning",
+            has_recurrence_rules: true,
+            meeting_link: "https://meet.example/old",
+            provider_modified_at: "2024-01-01T00:00:00Z",
           }),
         ],
       }),
@@ -222,6 +224,7 @@ describe("syncEvents", () => {
     expect(result.toAdd.map((event) => event.tracking_id_event)).toEqual([
       "current-series:2024-01-15",
     ]);
+    expect(result.toAdd[0].meeting_link).toBe("https://meet.example/current");
   });
 
   test("replays the nine live duplicate groups without row growth", () => {
@@ -315,6 +318,38 @@ describe("syncEvents", () => {
     );
 
     expect(result.toAdd).toHaveLength(2);
+  });
+
+  test("deletes an out-of-window row when its tracking id moved calendars", () => {
+    const result = syncEvents(
+      createMockCtx({
+        calendarIds: new Set(["cal-1", "cal-2"]),
+        calendarTrackingIdToId: new Map([
+          ["tracking-cal-1", "cal-1"],
+          ["tracking-cal-2", "cal-2"],
+        ]),
+      }),
+      syncInput({
+        incoming: [
+          createIncomingEvent({
+            tracking_id_event: "moved-event",
+            tracking_id_calendar: "tracking-cal-2",
+          }),
+        ],
+        existing: [
+          createExistingEvent({
+            id: "old-calendar-row",
+            tracking_id_event: "moved-event",
+            calendar_id: "cal-1",
+            started_at: "2026-09-01T18:00:00Z",
+            ended_at: "2026-09-01T19:00:00Z",
+          }),
+        ],
+      }),
+    );
+
+    expect(result.toDelete).toEqual(["old-calendar-row"]);
+    expect(result.toAdd).toHaveLength(1);
   });
 
   test("coalesces untitled Apple occurrences with the same exact times", () => {

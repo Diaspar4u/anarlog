@@ -18,6 +18,18 @@ export function syncEvents(
 
   const { canonical: incomingByCanonicalKey, expanded: incomingByKey } =
     buildIncomingEventIndex(ctx.provider, incoming, ctx.calendarTrackingIdToId);
+  const incomingCalendarsByTrackingId = new Map<string, Set<string>>();
+  for (const event of incoming) {
+    const calendarId = ctx.calendarTrackingIdToId.get(
+      event.tracking_id_calendar,
+    );
+    if (!calendarId) continue;
+    const calendarIds =
+      incomingCalendarsByTrackingId.get(event.tracking_id_event) ??
+      new Set<string>();
+    calendarIds.add(calendarId);
+    incomingCalendarsByTrackingId.set(event.tracking_id_event, calendarIds);
+  }
   const handledKeys = new Set<string>();
 
   for (const storeEvent of existing) {
@@ -52,9 +64,16 @@ export function syncEvents(
       continue;
     }
 
+    const incomingCalendars = incomingCalendarsByTrackingId.get(
+      storeEvent.tracking_id_event,
+    );
+    const movedToAnotherCalendar =
+      incomingCalendars !== undefined &&
+      !incomingCalendars.has(storeEvent.calendar_id);
     if (
       !storeEvent.deleted_at &&
-      overlapsSyncRange(ctx, storeEvent.started_at, storeEvent.ended_at)
+      (movedToAnotherCalendar ||
+        overlapsSyncRange(ctx, storeEvent.started_at, storeEvent.ended_at))
     ) {
       out.toDelete.push(storeEvent.id);
     }
