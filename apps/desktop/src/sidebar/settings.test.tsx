@@ -218,7 +218,6 @@ describe("SettingsNav", () => {
   });
 
   it("finds and opens Insights for free users", () => {
-    mocks.isPro = false;
     render(<SettingsNav />);
     fireEvent.change(screen.getByPlaceholderText("Search settings..."), {
       target: { value: "insights" },
