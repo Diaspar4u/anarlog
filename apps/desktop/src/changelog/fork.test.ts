@@ -25,12 +25,12 @@ const EXCLUDED_FEATURES = [
 
 describe("getForkChangelog", () => {
   it("returns curated notes for the maintained fork release", () => {
-    const content = getForkChangelog("1.4.24-ads.1");
+    const content = getForkChangelog("1.4.25-ads.1");
 
-    expect(content).toContain("stalled live transcription");
-    expect(content).toContain("Bluetooth microphones");
-    expect(content).toContain("speaker names");
-    expect(content).toContain("recurring Apple Calendar meetings");
+    expect(content).toContain("Edit completed transcripts");
+    expect(content).toContain("interrupted transcripts");
+    expect(content).toContain("24-hour format");
+    expect(content).toContain("Markdown automation");
   });
 
   it("preserves historical Apple Calendar correction notes", () => {
@@ -48,7 +48,7 @@ describe("getForkChangelog", () => {
   it.each(EXCLUDED_FEATURES)(
     "omits removed or unused feature: %s",
     (feature) => {
-      expect(getForkChangelog("1.4.24-ads.1")).not.toMatch(
+      expect(getForkChangelog("1.4.25-ads.1")).not.toMatch(
         new RegExp(feature, "i"),
       );
     },
