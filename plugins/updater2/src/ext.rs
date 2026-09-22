@@ -120,6 +120,10 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Updater2<'a, R, M> {
     }
 
     pub async fn check(&self) -> Result<Option<String>, crate::Error> {
+        if !crate::UPDATES_ENABLED {
+            return Ok(None);
+        }
+
         let updater = self.manager.updater()?;
         let update = updater.check().await?;
         let version = update.map(|u| u.version);

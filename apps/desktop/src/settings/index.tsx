@@ -1,7 +1,6 @@
 import { cn } from "@anlg/utils";
 
 import {
-  SettingsAccount,
   SettingsApp,
   SettingsMeetings,
   SettingsNotifications,
@@ -15,13 +14,9 @@ import { SettingsAppearance } from "~/settings/appearance";
 import { SettingsDevelopers } from "~/settings/developers";
 import { SettingsDictation } from "~/settings/dictation";
 import { SettingsDictionary } from "~/settings/dictionary";
-import { SettingsBilling } from "~/settings/general/billing";
 import { SettingsHydrationBoundary } from "~/settings/hydration-boundary";
 import { SettingsImports } from "~/settings/imports";
-import { SettingsPrivacy } from "~/settings/privacy";
 import { SettingsInsights } from "~/settings/stats";
-import { SettingsSync } from "~/settings/sync";
-import { SettingsTeam } from "~/settings/team";
 import { StandardContentWrapper } from "~/shared/main";
 import { type Tab } from "~/store/zustand/tabs";
 
@@ -52,10 +47,6 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
 
   const renderContent = () => {
     switch (activeTab) {
-      case "account":
-        return <SettingsAccount />;
-      case "billing":
-        return <SettingsBilling />;
       case "stats":
       case "insights":
         return <SettingsInsights />;
@@ -67,16 +58,10 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
         return <SettingsAppearance />;
       case "notifications":
         return <SettingsNotifications />;
-      case "sync":
-        return <SettingsSync />;
-      case "team":
-        return <SettingsTeam />;
       case "imports":
         return <SettingsImports />;
       case "permissions":
         return <SettingsPermissions />;
-      case "privacy":
-        return <SettingsPrivacy />;
       case "developers":
         return <SettingsDevelopers />;
       case "dictionary":
