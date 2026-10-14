@@ -11,6 +11,9 @@ Default permissions for the plugin
 - `allow-test-webhook`
 - `allow-dispatch-event`
 - `allow-export-meeting-markdown`
+- `allow-markdown-export-policy`
+- `allow-export-meeting-markdown-automatically`
+- `allow-prepare-drive-markdown`
 - `allow-get-cloud-snapshot`
 - `allow-list-cloud-snapshot-ids`
 
@@ -130,6 +133,32 @@ Denies the export_meeting_markdown command without any pre-configured scope.
 <tr>
 <td>
 
+`local-api:allow-export-meeting-markdown-automatically`
+
+</td>
+<td>
+
+Enables the export_meeting_markdown_automatically command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-api:deny-export-meeting-markdown-automatically`
+
+</td>
+<td>
+
+Denies the export_meeting_markdown_automatically command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `local-api:allow-get-cloud-snapshot`
 
 </td>
@@ -201,6 +230,58 @@ Enables the list_webhooks command without any pre-configured scope.
 <td>
 
 Denies the list_webhooks command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-api:allow-markdown-export-policy`
+
+</td>
+<td>
+
+Enables the markdown_export_policy command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-api:deny-markdown-export-policy`
+
+</td>
+<td>
+
+Denies the markdown_export_policy command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-api:allow-prepare-drive-markdown`
+
+</td>
+<td>
+
+Enables the prepare_drive_markdown command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-api:deny-prepare-drive-markdown`
+
+</td>
+<td>
+
+Denies the prepare_drive_markdown command without any pre-configured scope.
 
 </td>
 </tr>

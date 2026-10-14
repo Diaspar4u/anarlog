@@ -12,6 +12,7 @@ import {
   PopoverTrigger,
 } from "@anlg/ui/components/ui/popover";
 import { toast } from "@anlg/ui/components/ui/toast";
+import { useMountEffect } from "@anlg/ui/hooks/use-mount-effect";
 import { cn } from "@anlg/utils";
 
 import {
@@ -69,7 +70,6 @@ import {
   useManagedDurableSharedNote,
 } from "~/shared-notes/cache";
 import { useConfigValue } from "~/shared/config";
-import { useMountEffect } from "~/shared/hooks/useMountEffect";
 
 export function SessionShareButton({
   sessionId,
@@ -262,6 +262,7 @@ export function SessionShareButton({
             body: source.body,
             participants: source.participants,
             meetingAt: source.meetingAt,
+            eventKey: source.eventKey,
             attachmentIds: [],
             signal,
           });

@@ -8,6 +8,9 @@ permissions = [
   "allow-test-webhook",
   "allow-dispatch-event",
   "allow-export-meeting-markdown",
+  "allow-markdown-export-policy",
+  "allow-export-meeting-markdown-automatically",
+  "allow-prepare-drive-markdown",
   "allow-get-cloud-snapshot",
   "allow-list-cloud-snapshot-ids",
 ]

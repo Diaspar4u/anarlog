@@ -29,6 +29,7 @@ import {
   extractFirstLineTitle,
   documentTitlePlaceholder,
 } from "~/session/title-content";
+import { repairMissingSessionTitle } from "~/session/title-repair";
 
 const extraNodeViews = { appLink: AppLinkView, session: SessionNodeView };
 
@@ -143,16 +144,16 @@ const EnhancedEditorInner = forwardRef<
 
     return (
       <AudioDropTarget
-        className="h-full"
         targetProps={audioDropTargetProps}
         isActive={isAudioDragActive}
       >
-        <div ref={comments.containerRef} className="relative h-full">
+        <div ref={comments.containerRef} className="relative min-h-full">
           <NoteEditor
             ref={ref}
             className="session-note-editor enhanced-summary-editor"
             key={editorKey}
             initialContent={initialContent}
+            scrollBottomInset={80}
             resolveAttachment={resolveAttachment}
             handleChange={persistChanges ? handleChange : undefined}
             placeholderComponent={documentTitlePlaceholder}
@@ -173,6 +174,16 @@ const EnhancedEditorInner = forwardRef<
             onViewReady={(view) => {
               comments.onViewReady(view);
               onViewReady?.(view);
+              if (persistChanges && !sessionTitle.trim()) {
+                void repairMissingSessionTitle(sessionId, enhancedNoteId).catch(
+                  (error) => {
+                    console.error(
+                      "[enhanced-editor] failed to repair title",
+                      error,
+                    );
+                  },
+                );
+              }
             }}
             onViewDisposed={(view) => {
               comments.onViewDisposed(view);

@@ -51,6 +51,10 @@ test("configures distinct app identities for every build profile", () => {
       assert.equal(config.scheme, expected.scheme);
       assert.equal(config.ios.bundleIdentifier, expected.bundleIdentifier);
       assert.equal(config.ios.icon, expected.icon);
+      assert.equal(
+        config.ios.infoPlist.BGTaskSchedulerPermittedIdentifiers,
+        undefined,
+      );
       assert.equal(config.android.package, expected.bundleIdentifier);
       assert.equal(config.android.icon, expected.icon);
       const { foregroundImage, backgroundColor, monochromeImage } =

@@ -24,6 +24,24 @@ const EXCLUDED_FEATURES = [
 ];
 
 describe("getForkChangelog", () => {
+  it("describes default-on export and preserves the configured vault in the public release", () => {
+    const content = getForkChangelog("1.4.30-ads.2");
+    expect(content).toContain("enabled by default");
+    expect(content).toContain("existing vault");
+    expect(content).toContain("transcripts and summaries");
+    for (const feature of EXCLUDED_FEATURES) {
+      expect(content).not.toMatch(new RegExp(feature, "i"));
+    }
+  });
+  it("describes the private candidate without advertising hosted services", () => {
+    const content = getForkChangelog("1.4.30-ads.1");
+    expect(content).toContain("Private candidate");
+    expect(content).toContain("configured recording location");
+    expect(content).toContain("automatic Markdown export");
+    for (const feature of EXCLUDED_FEATURES) {
+      expect(content).not.toMatch(new RegExp(feature, "i"));
+    }
+  });
   it("returns curated notes for the maintained fork release", () => {
     const content = getForkChangelog("1.4.25-ads.1");
 

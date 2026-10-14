@@ -1,5 +1,6 @@
 mod commands;
 mod dispatch;
+mod markdown_policy;
 mod types;
 
 pub use dispatch::{EVENT_MEETING_COMPLETED, EVENT_NOTE_ENHANCED, KNOWN_EVENTS};
@@ -19,6 +20,9 @@ fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::test_webhook::<tauri::Wry>,
             commands::dispatch_event::<tauri::Wry>,
             commands::export_meeting_markdown::<tauri::Wry>,
+            commands::markdown_export_policy::<tauri::Wry>,
+            commands::export_meeting_markdown_automatically::<tauri::Wry>,
+            commands::prepare_drive_markdown::<tauri::Wry>,
             commands::get_cloud_snapshot::<tauri::Wry>,
             commands::list_cloud_snapshot_ids::<tauri::Wry>,
         ])
@@ -83,6 +87,39 @@ mod test {
         .await
         .unwrap();
         db.pool().clone()
+    }
+
+    #[tokio::test]
+    async fn drive_export_requires_summary_and_preserves_transcript_and_metadata() {
+        let pool = seeded_pool().await;
+        let mut export = anlg_agent_access::get_meeting_export(&pool, "meeting-1".to_string())
+            .await
+            .unwrap();
+        assert!(commands::drive_markdown(export.clone()).is_err());
+        let mut summary = export.meeting.note.clone().unwrap();
+        summary.markdown = "결정 사항".to_string();
+        summary.title = "Summary".to_string();
+        export.meeting.summaries.push(summary);
+        assert_eq!(
+            commands::drive_markdown(export.clone()).unwrap().filename,
+            "2026-07-13 Planning.md"
+        );
+        export.meeting.title = "회의 / 프로젝트".repeat(100);
+        let prepared = commands::drive_markdown(export.clone()).unwrap();
+        assert!(prepared.markdown.contains("결정 사항"));
+        assert!(prepared.markdown.contains("hello world"));
+        assert!(prepared.markdown.contains("- ID: `meeting-1`"));
+        assert!(prepared.markdown.contains("- Date: 2026-07-13"));
+        assert!(!prepared.markdown.contains("Launch decision"));
+        assert!(!prepared.filename.contains('/'));
+        assert!(prepared.filename.len() < 512);
+        export.transcripts.clear();
+        assert!(
+            commands::drive_markdown(export)
+                .unwrap()
+                .markdown
+                .contains("No transcript is available")
+        );
     }
 
     #[tokio::test]
@@ -166,7 +203,9 @@ mod test {
                 .unwrap();
         }
 
-        commands::run_markdown_export_automation(&pool, "meeting-1").await;
+        commands::run_markdown_export_automation(&pool, "meeting-1", None)
+            .await
+            .unwrap();
 
         let exported = directory.join("2026-07-13 Planning [meeting-].md");
         assert!(exported.exists());
@@ -185,6 +224,68 @@ mod test {
         assert_eq!(record["detail"], exported.to_string_lossy().into_owned());
         assert!(record["at"].as_str().is_some_and(|at| at.ends_with('Z')));
         std::fs::remove_dir_all(&directory).ok();
+    }
+
+    #[tokio::test]
+    async fn default_export_uses_custom_vault_and_refreshes_same_file_after_summary() {
+        let pool = seeded_pool().await;
+        let vault = tempfile::tempdir().unwrap();
+        let first =
+            commands::run_markdown_export_automation(&pool, "meeting-1", Some(vault.path()))
+                .await
+                .unwrap()
+                .unwrap();
+        assert!(std::path::Path::new(&first).starts_with(vault.path().join("sessions")));
+        assert!(
+            std::fs::read_to_string(&first)
+                .unwrap()
+                .contains("hello world")
+        );
+        sqlx::query("INSERT INTO session_documents (id, session_id, kind, body_format, body, title) VALUES ('summary-1', 'meeting-1', 'summary', 'markdown', 'Late summary decision', 'Summary')")
+            .execute(&pool).await.unwrap();
+        let refreshed =
+            commands::run_markdown_export_automation(&pool, "meeting-1", Some(vault.path()))
+                .await
+                .unwrap()
+                .unwrap();
+        assert_eq!(first, refreshed);
+        let text = std::fs::read_to_string(&refreshed).unwrap();
+        assert!(text.contains("Late summary decision"));
+        assert!(text.contains("hello world"));
+        sqlx::query("INSERT INTO app_settings (id, value_json) VALUES ('automation_markdown_export_enabled', 'false')")
+            .execute(&pool).await.unwrap();
+        assert!(
+            commands::run_markdown_export_automation(&pool, "meeting-1", Some(vault.path()))
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[tokio::test]
+    async fn configured_export_failure_is_recorded_without_removing_source() {
+        let pool = seeded_pool().await;
+        let blocked = tempfile::NamedTempFile::new().unwrap();
+        assert!(
+            commands::run_markdown_export_automation(&pool, "meeting-1", Some(blocked.path()))
+                .await
+                .is_err()
+        );
+        let raw: String = sqlx::query_scalar(
+            "SELECT value_json FROM app_settings WHERE id = 'automation_markdown_export_last_run'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        let record: String = serde_json::from_str(&raw).unwrap();
+        let record: serde_json::Value = serde_json::from_str(&record).unwrap();
+        assert_eq!(record["status"], "error");
+        let transcripts: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM transcripts WHERE session_id = 'meeting-1'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(transcripts, 1);
     }
 
     #[tokio::test]
@@ -615,7 +716,9 @@ mod test {
     async fn note_enhanced_export_skips_silently_without_configuration() {
         let pool = seeded_pool().await;
 
-        commands::run_markdown_export_automation(&pool, "meeting-1").await;
+        commands::run_markdown_export_automation(&pool, "meeting-1", None)
+            .await
+            .unwrap();
 
         let row: Option<String> = sqlx::query_scalar(
             "SELECT value_json FROM app_settings \

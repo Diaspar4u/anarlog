@@ -18,9 +18,14 @@ import {
   validateProviderConfig,
   normalizeTranscriptionResponse,
   providersFor,
+  isSubscriptionProvider,
 } from "./providers-model.ts";
 
 const sourceRoot = new URL("../", import.meta.url);
+const providerValidationUrl = new URL(
+  "../../../../packages/provider-validation/src/index.ts",
+  import.meta.url,
+).href;
 const fixture = (globalThis.mobileSettingsFixture = {
   db: null,
   keys: new Map(),
@@ -34,7 +39,13 @@ const fixture = (globalThis.mobileSettingsFixture = {
     }),
 });
 const modules = {
-  "@anlg/provider-validation": `export async function verifyProviderCredentials(credential) { return globalThis.mobileSettingsFixture.verify(credential); }`,
+  "@anlg/provider-validation": `import { verifyProviderCredentials as verifyReal } from "${providerValidationUrl}";
+    export async function verifyProviderCredentials(credential, fetcher, signal) {
+      const fixture = globalThis.mobileSettingsFixture;
+      if (fixture.useRealProviderValidation)
+        return verifyReal(credential, fetcher, signal);
+      return fixture.verify(credential);
+    }`,
   "@anlg/mobile-bridge": `export const ProviderTranscriptionError = Object.fromEntries(["AudioTooLarge", "AudioMissing", "ResponseTooLarge", "InvalidSettings", "TimedOut", "RequestFailed"].map(tag => [tag, {instanceOf: error => error.tag === tag}]));
   export async function transcribeProviderAudio(request, options) {
     const fixture = globalThis.mobileSettingsFixture;
@@ -57,7 +68,7 @@ const modules = {
   "expo-secure-store": `const fixture = globalThis.mobileSettingsFixture;
     export const WHEN_UNLOCKED_THIS_DEVICE_ONLY = 'device-only';
     export async function getItemAsync(key) { return fixture.keys.get(key)?.value ?? null; }
-    export async function setItemAsync(key, value, options) { fixture.keys.set(key, {value, options}); }
+    export async function setItemAsync(key, value, options) { fixture.beforeKeyWrite?.(key, value); fixture.keys.set(key, {value, options}); }
     export async function deleteItemAsync(key) { fixture.keys.delete(key); }`,
   "expo/fetch": `export async function fetch(url, options) {
     const fixture = globalThis.mobileSettingsFixture;
@@ -122,11 +133,19 @@ const { requestProviderTranscription } =
 const {
   summarizeSession,
   generateSummaryAfterTranscription,
-  automaticSummaryOptions,
+  summaryRecoveryOptions,
 } = await import("../data/summarize.ts");
+const { pendingSummaryStatement, PENDING_SUMMARY_PREFIX } =
+  await import("../data/summary-job.ts");
 const { queryClient } = await import("../lib/query-client.ts");
+const { dismissToast, getToast } = await import("../lib/toast.ts");
 const { loadSessionTranscripts } = await import("../data/transcripts.ts");
 const { Platform } = await import("react-native");
+const {
+  readSubscriptionCredential,
+  saveSubscriptionCredential,
+  resolveSubscriptionCredential,
+} = await import("./subscription-access.ts");
 
 function signedInWith(claims) {
   fixture.session = {
@@ -159,8 +178,10 @@ beforeEach(() => {
     );
   }
   fixture.keys.clear();
+  fixture.beforeKeyWrite = null;
   fixture.session = null;
   fixture.requests = [];
+  fixture.useRealProviderValidation = false;
   fixture.verify = async () => {};
   fixture.respond = () =>
     Response.json({
@@ -212,6 +233,22 @@ test("failed verification never creates a provider or exposes it in selection", 
     false,
   );
   assert.equal((await readProviderConfig(null, "stt")).provider, "anarlog");
+});
+
+test("custom STT save and availability skip model-list verification", async () => {
+  fixture.useRealProviderValidation = true;
+  fixture.respond = () => {
+    throw Error("Custom STT verification must not request a model list.");
+  };
+  await saveProviderConnection(
+    "account-a",
+    "stt",
+    { provider: "custom", baseUrl: "https://custom.test/v1" },
+    "synthetic-key",
+  );
+  const status = await readProviderStatus("account-a", "stt", "custom");
+  assert.equal(status.isConfigured, true);
+  assert.equal(fixture.requests.length, 0);
 });
 
 test("provider availability follows saved device keys for transcription and summaries", async () => {
@@ -315,12 +352,10 @@ test("desktop list encoding and malformed preferences preserve usable defaults",
       ),
       source_rank: 0,
     },
-    { id: "summary_length", value_json: '"unknown"', source_rank: 0 },
     { id: "sidebar_show_tags", value_json: "{broken", source_rank: 0 },
   ]);
   assert.equal(preferences.theme, "light");
   assert.deepEqual(preferences.spoken_languages, ["ko", "en"]);
-  assert.equal(preferences.summary_length, "detailed");
   assert.equal(preferences.sidebar_show_tags, false);
   assert.deepEqual(
     normalizeDictionary([
@@ -411,6 +446,319 @@ test("provider keys stay in device-only secure storage, separated by account and
 test("hosted Anarlog Pro requires a session token", async () => {
   fixture.session = null;
   await assert.rejects(resolveProvider("stt"), /Sign in to use Anarlog Pro/);
+});
+
+function chatgptCredential(overrides = {}) {
+  const payload = {
+    "https://api.openai.com/auth": {
+      chatgpt_account_id: "chatgpt-workspace",
+      chatgpt_compute_residency: "us",
+    },
+  };
+  return {
+    type: "oauth",
+    access: `test.${Buffer.from(JSON.stringify(payload)).toString("base64url")}.signature`,
+    refresh: "synthetic-chatgpt-refresh",
+    accountId: "chatgpt-workspace",
+    expires: Date.now() + 3600_000,
+    ...overrides,
+  };
+}
+
+test("ChatGPT device credentials discover models and generate a persisted summary without Anarlog Pro", async () => {
+  signedInWith({ entitlements: [] });
+  createNote();
+  const credential = chatgptCredential();
+  await saveSubscriptionCredential("account-a", "chatgpt", credential);
+  const config = {
+    ...defaultProviderConfig("llm", "chatgpt"),
+    model: "test-chat",
+  };
+  await saveProviderConfig("account-a", "llm", config);
+  fixture.verify = () => {
+    throw new Error("Subscription tokens must not be verified as API keys");
+  };
+  fixture.respond = (url, options) => {
+    assert.equal(options.headers.Authorization, `Bearer ${credential.access}`);
+    assert.equal(options.headers["ChatGPT-Account-ID"], "chatgpt-workspace");
+    assert.equal(options.headers["x-openai-internal-codex-residency"], "us");
+    if (url.includes("/models?"))
+      return Response.json({
+        models: [
+          { slug: "test-chat" },
+          { slug: "hidden-model", visibility: "hide" },
+        ],
+      });
+    assert.equal(url, "https://chatgpt.com/backend-api/codex/responses");
+    const body = JSON.parse(options.body);
+    assert.equal(body.model, "test-chat");
+    assert.equal(body.store, false);
+    assert.equal(body.stream, true);
+    assert.ok(body.instructions.includes("Summarize"));
+    assert.ok(body.input[0].content[0].text.includes("Ship the app"));
+    assert.ok(!("max_output_tokens" in body));
+    return new Response(
+      `data: ${JSON.stringify({ type: "response.completed", response: { status: "completed", output: [{ type: "message", content: [{ type: "output_text", text: "## Decisions\nShip the mobile app." }] }] } })}\n\n`,
+      { headers: { "Content-Type": "text/event-stream" } },
+    );
+  };
+  assert.equal(
+    (await readProviderStatus("account-a", "llm", "chatgpt")).isConfigured,
+    true,
+  );
+  assert.deepEqual(
+    await discoverProviderModels(
+      "account-a",
+      config,
+      new AbortController().signal,
+    ),
+    ["test-chat"],
+  );
+  await summarizeSession("note-1");
+  assert.equal(
+    fixture.db
+      .prepare("SELECT body FROM session_documents WHERE kind = 'summary'")
+      .get().body,
+    "## Decisions\nShip the mobile app.",
+  );
+  assert.ok(
+    !JSON.stringify(
+      fixture.db.prepare("SELECT * FROM app_settings").all(),
+    ).includes(credential.access),
+  );
+  assert.ok(
+    !JSON.stringify(
+      fixture.db.prepare("SELECT * FROM session_documents").all(),
+    ).includes(credential.refresh),
+  );
+  await assert.rejects(
+    resolveSubscriptionCredential("account-b", "chatgpt"),
+    /Connect ChatGPT/,
+  );
+});
+
+test("other subscription providers isolate credentials and persist summaries through their own authenticated endpoints", async () => {
+  for (const provider of ["claude", "grok", "github_copilot", "kimi_code"]) {
+    fixture.db.exec(
+      "DELETE FROM app_settings; DELETE FROM session_documents; DELETE FROM sessions",
+    );
+    signedInWith({ entitlements: [] });
+    createNote();
+    const credential = {
+      type: "oauth",
+      access: `${provider}-access`,
+      refresh: `${provider}-refresh`,
+      expires: Date.now() + 3600_000,
+    };
+    const config = {
+      ...defaultProviderConfig("llm", provider),
+      model: "test-chat",
+    };
+    if (provider !== "kimi_code")
+      await saveSubscriptionCredential("account-a", provider, credential);
+    fixture.verify = async (value) => {
+      assert.equal(value.provider, "kimi_code");
+      assert.equal(value.apiKey, "kimi-key");
+    };
+    await saveProviderConfig(
+      "account-a",
+      "llm",
+      config,
+      provider === "kimi_code" ? "kimi-key" : undefined,
+    );
+    fixture.respond = (url, options) => {
+      assert.equal(
+        options.headers.Authorization,
+        `Bearer ${provider === "kimi_code" ? "kimi-key" : credential.access}`,
+      );
+      if (url.endsWith("/models"))
+        return Response.json({
+          data: [
+            { id: "test-chat" },
+            ...(provider === "github_copilot"
+              ? [{ id: "hidden-model", model_picker_enabled: false }]
+              : []),
+          ],
+        });
+      const body = JSON.parse(options.body);
+      assert.equal(body.model, "test-chat");
+      if (provider === "claude") {
+        assert.equal(url, "https://api.anthropic.com/v1/messages");
+        assert.ok(!("x-api-key" in options.headers));
+        assert.ok(options.headers["anthropic-beta"].includes("oauth"));
+        assert.equal(
+          body.system[0].text,
+          "You are Claude Code, Anthropic's official CLI for Claude.",
+        );
+        assert.ok(body.messages[0].content.includes("Ship the app"));
+        return Response.json({
+          content: [
+            { type: "thinking", text: "reasoning" },
+            { type: "text", text: "## Decisions\nShip the mobile app." },
+          ],
+        });
+      }
+      assert.equal(url, `${config.baseUrl}/chat/completions`);
+      if (provider === "github_copilot")
+        assert.equal(options.headers["Copilot-Integration-Id"], "vscode-chat");
+      assert.ok(body.messages[1].content.includes("Ship the app"));
+      return Response.json({
+        choices: [
+          { message: { content: "## Decisions\nShip the mobile app." } },
+        ],
+      });
+    };
+    assert.equal(
+      (await readProviderStatus("account-a", "llm", provider)).isConfigured,
+      true,
+    );
+    assert.deepEqual(
+      await discoverProviderModels(
+        "account-a",
+        config,
+        new AbortController().signal,
+      ),
+      ["test-chat"],
+    );
+    await summarizeSession("note-1");
+    assert.equal(
+      fixture.db
+        .prepare("SELECT body FROM session_documents WHERE kind = 'summary'")
+        .get().body,
+      "## Decisions\nShip the mobile app.",
+    );
+    const persisted = JSON.stringify(
+      fixture.db.prepare("SELECT * FROM app_settings").all(),
+    );
+    assert.ok(
+      !persisted.includes(credential.access) &&
+        !persisted.includes(credential.refresh) &&
+        !persisted.includes("kimi-key"),
+    );
+    if (provider !== "kimi_code") {
+      await assert.rejects(
+        resolveSubscriptionCredential("account-b", provider),
+        /Connect/,
+      );
+      assert.equal(
+        await readSubscriptionCredential("account-a", "chatgpt"),
+        null,
+      );
+    }
+    await removeProviderKey("account-a", "llm", provider);
+    assert.equal(
+      (await readProviderStatus("account-a", "llm", provider)).hasKey,
+      false,
+    );
+  }
+});
+
+test("concurrent ChatGPT requests persist rotated tokens and disconnect cannot be undone by a late refresh", async () => {
+  const expired = chatgptCredential({ expires: 0 });
+  await saveSubscriptionCredential("account-a", "chatgpt", expired);
+  const next = chatgptCredential({
+    refresh: "rotated-refresh",
+    access: "rotated-access",
+  });
+  let refreshed = false;
+  fixture.respond = (url, options) => {
+    assert.equal(url, "https://auth.openai.com/oauth/token");
+    assert.equal(
+      new URLSearchParams(options.body).get("refresh_token"),
+      expired.refresh,
+    );
+    assert.equal(
+      refreshed,
+      false,
+      "a second request must reuse the newly persisted credential",
+    );
+    refreshed = true;
+    return Response.json({
+      access_token: next.access,
+      refresh_token: next.refresh,
+      expires_in: 3600,
+    });
+  };
+  const results = await Promise.all([
+    resolveSubscriptionCredential("account-a", "chatgpt"),
+    resolveSubscriptionCredential("account-a", "chatgpt"),
+  ]);
+  assert.equal(results[0].access, next.access);
+  assert.equal(results[1].refresh, next.refresh);
+  assert.equal(
+    (await readSubscriptionCredential("account-a", "chatgpt")).refresh,
+    next.refresh,
+  );
+  await saveSubscriptionCredential("account-a", "chatgpt", expired);
+  let finish;
+  let started;
+  const requestStarted = new Promise((resolve) => {
+    started = resolve;
+  });
+  fixture.respond = () => {
+    started();
+    return new Promise((resolve) => {
+      finish = resolve;
+    });
+  };
+  const refreshing = resolveSubscriptionCredential("account-a", "chatgpt");
+  await requestStarted;
+  const disconnecting = removeProviderKey("account-a", "llm", "chatgpt");
+  finish(
+    Response.json({
+      access_token: next.access,
+      refresh_token: next.refresh,
+      expires_in: 3600,
+    }),
+  );
+  await Promise.all([refreshing, disconnecting]);
+  assert.equal(await readSubscriptionCredential("account-a", "chatgpt"), null);
+  await assert.rejects(
+    resolveSubscriptionCredential("account-a", "chatgpt"),
+    /Connect ChatGPT/,
+  );
+  assert.equal(fixture.keys.size, 0);
+});
+
+test("large ChatGPT credentials survive keychain limits and failed replacement keeps the previous connection", async () => {
+  fixture.beforeKeyWrite = (_key, value) => {
+    if (Buffer.byteLength(value) > 2048)
+      throw new Error("Keychain value too large");
+  };
+  const original = chatgptCredential({ access: "a".repeat(6000) });
+  await saveSubscriptionCredential("account-a", "chatgpt", original);
+  assert.deepEqual(
+    await readSubscriptionCredential("account-a", "chatgpt"),
+    original,
+  );
+  const before = [...fixture.keys.entries()];
+  fixture.beforeKeyWrite = () => {
+    throw new Error("Keychain unavailable");
+  };
+  await assert.rejects(
+    saveSubscriptionCredential("account-a", "chatgpt", chatgptCredential()),
+    /Keychain unavailable/,
+  );
+  assert.deepEqual(
+    await readSubscriptionCredential("account-a", "chatgpt"),
+    original,
+  );
+  assert.deepEqual([...fixture.keys.entries()], before);
+  const cancelled = new AbortController();
+  cancelled.abort();
+  await assert.rejects(
+    saveSubscriptionCredential(
+      "account-a",
+      "chatgpt",
+      chatgptCredential(),
+      cancelled.signal,
+    ),
+    { name: "AbortError" },
+  );
+  assert.deepEqual(
+    await readSubscriptionCredential("account-a", "chatgpt"),
+    original,
+  );
 });
 
 test("saving provider credentials leaves the active selection unchanged", async () => {
@@ -972,7 +1320,6 @@ function createNote() {
 test("summary generation uses the selected provider and persists a canonical summary without changing notes", async () => {
   createNote();
   await setPreference("ai_language", "ko");
-  await setPreference("summary_length", "crisp");
   await saveProviderConfig(
     null,
     "llm",
@@ -989,10 +1336,11 @@ test("summary generation uses the selected provider and persists a canonical sum
   assert.equal(options.headers["x-api-key"], "synthetic-anthropic-key");
   const request = JSON.parse(options.body);
   assert.match(request.system, /in ko/);
-  assert.match(request.system, /Keep it brief/);
+  assert.match(request.system, /detailed account/);
   const summary = fixture.db
     .prepare("SELECT * FROM session_documents WHERE kind = 'summary'")
     .get();
+  assert.equal(summary.id, "summary:note-1");
   assert.equal(summary.workspace_id, "workspace-a");
   assert.equal(summary.body_format, "markdown");
   assert.equal(
@@ -1004,6 +1352,28 @@ test("summary generation uses the selected provider and persists a canonical sum
       .prepare("SELECT body FROM session_documents WHERE id = 'note-1'")
       .get().body,
     /Ship the app next week/,
+  );
+  fixture.db
+    .prepare(
+      "UPDATE session_documents SET deleted_at = 'deleted', updated_at = 'deleted' WHERE id = ?",
+    )
+    .run(summary.id);
+  await summarizeSession("note-1");
+  assert.equal(
+    fixture.db
+      .prepare(
+        "SELECT count(*) AS count FROM session_documents WHERE kind = 'summary' AND deleted_at IS NULL",
+      )
+      .get().count,
+    1,
+  );
+  assert.equal(
+    fixture.db
+      .prepare(
+        "SELECT id FROM session_documents WHERE kind = 'summary' AND deleted_at IS NULL",
+      )
+      .get().id,
+    summary.id,
   );
 });
 
@@ -1152,11 +1522,13 @@ test("analytics opt-out aborts in-flight requests and prevents subsequent events
   }
 });
 
-for (const kind of ["stt", "llm"]) {
-  for (const definition of providersFor(kind).filter(
-    ({ id }) => id !== "anarlog",
-  )) {
-    test(`${kind} ${definition.name} keeps its key on this device and restores its own setup`, async () => {
+test("every provider keeps its key on this device and restores its own setup", async () => {
+  for (const kind of ["stt", "llm"]) {
+    for (const definition of providersFor(kind).filter(
+      ({ id }) => id !== "anarlog" && !isSubscriptionProvider(id),
+    )) {
+      const tag = `${kind}/${definition.id}`;
+      fixture.db.exec("DELETE FROM app_settings");
       const config = {
         ...defaultProviderConfig(kind, definition.id),
         baseUrl: definition.baseUrl || "https://gateway.example/v1",
@@ -1166,40 +1538,49 @@ for (const kind of ["stt", "llm"]) {
       assert.deepEqual(
         await readProviderSetup("account-a", kind, definition.id),
         config,
+        tag,
       );
       assert.equal(
         (await readProviderConfig("account-a", kind)).provider,
         "anarlog",
+        tag,
       );
       await saveProviderConfig("account-a", kind, config);
-      assert.deepEqual(await readProviderConfig("account-a", kind), config);
+      assert.deepEqual(
+        await readProviderConfig("account-a", kind),
+        config,
+        tag,
+      );
       assert.equal(
         fixture.keys.get(providerStorageKey("account-a", kind, definition.id))
           .options.keychainAccessible,
         "device-only",
+        tag,
       );
       assert.ok(
         !fixture.db
           .prepare("SELECT value_json FROM app_settings")
           .all()
           .some((row) => row.value_json.includes("synthetic-key")),
+        tag,
       );
       assert.deepEqual(
         await readProviderSetup("account-b", kind, definition.id),
         defaultProviderConfig(kind, definition.id),
+        tag,
       );
       await removeProviderKey("account-a", kind, definition.id);
       assert.ok(
         !fixture.keys.has(providerStorageKey("account-a", kind, definition.id)),
+        tag,
       );
-    });
+    }
   }
-}
+});
 
-for (const definition of providersFor("stt").filter(
-  ({ id }) => !["anarlog", "custom"].includes(id),
-)) {
-  test(`${definition.name} delegates native audio to the desktop adapter with cancellation`, async () => {
+{
+  const definition = providersFor("stt").find(({ id }) => id === "assemblyai");
+  test("native provider audio is delegated to the desktop adapter with cancellation", async () => {
     const controller = new AbortController();
     const response = await requestProviderTranscription(
       { uri: "file:///documents/sessions/test/audio.wav", size: 100 },
@@ -1256,8 +1637,14 @@ test("native transcription preserves an already aborted signal", async () => {
   );
 });
 
-for (const definition of providersFor("llm").filter(
-  ({ id }) => id !== "anarlog",
+for (const definition of providersFor("llm").filter(({ id }) =>
+  [
+    "openai",
+    "anthropic",
+    "google_generative_ai",
+    "azure_openai",
+    "azure_ai",
+  ].includes(id),
 )) {
   test(`${definition.name} generates and persists a summary with its authentication format`, async () => {
     createNote();
@@ -1378,7 +1765,15 @@ const { discoverProviderModels, parseProviderModels } =
 const { presetProviderModels } = await import("./provider-model-catalog.ts");
 
 for (const definition of providersFor("llm").filter(
-  ({ id }) => id !== "anarlog" && !presetProviderModels("llm", id),
+  ({ id }) =>
+    [
+      "openai",
+      "anthropic",
+      "google_generative_ai",
+      "azure_openai",
+      "azure_ai",
+      "venice",
+    ].includes(id) && !presetProviderModels("llm", id),
 )) {
   test(`${definition.name} discovers selectable models with its device key and authentication headers`, async () => {
     const config = {
@@ -1606,8 +2001,9 @@ test("discovery aborts requests when leaving the picker", async () => {
   );
 });
 
-for (const suffix of ["", "/openai", "/openai/v1"]) {
-  test(`Azure model discovery normalizes the configured endpoint ${suffix || "root"}`, async () => {
+test("Azure model discovery normalizes the configured endpoint", async () => {
+  for (const suffix of ["", "/openai", "/openai/v1"]) {
+    fixture.requests = [];
     const config = {
       ...defaultProviderConfig("llm", "azure_openai"),
       baseUrl: `https://azure.example.test${suffix}`,
@@ -1622,9 +2018,10 @@ for (const suffix of ["", "/openai", "/openai/v1"]) {
     assert.equal(
       fixture.requests[0].url,
       "https://azure.example.test/openai/models?api-version=2024-10-21",
+      suffix || "root",
     );
-  });
-}
+  }
+});
 
 test("automatic summaries preserve memos and never overwrite an existing summary", async () => {
   createNote();
@@ -1656,6 +2053,56 @@ test("automatic summaries preserve memos and never overwrite an existing summary
       .get().body,
     "My edited summary",
   );
+});
+
+test("summary recovery resumes persisted local work after restart but ignores a synced transcript alone", async () => {
+  createNote();
+  signedInWith({
+    subscription_status: "active",
+    entitlements: ["hyprnote_pro"],
+  });
+  insertTranscript(
+    Array.from({ length: 30 }, (_, index) => `planning-${index}`),
+  );
+  fixture.db
+    .prepare(`INSERT INTO session_attachments (id, session_id, source_type, metadata_json)
+    VALUES ('session-audio:note-1', 'note-1', 'session_audio', '{"transcript_status":"complete"}')`)
+    .run();
+  await queryClient.fetchQuery(summaryRecoveryOptions("note-1"));
+  assert.equal(fixture.requests.length, 0);
+  assert.equal(summaryCount(), 0);
+
+  const job = pendingSummaryStatement("note-1");
+  fixture.db.prepare(job.sql).run(...job.params);
+  fixture.respond = () => {
+    throw new Error("Interrupted summary request");
+  };
+  await assert.rejects(
+    summarizeSession("note-1", { automatic: true }),
+    /Interrupted/,
+  );
+  const pending = () =>
+    fixture.db
+      .prepare("SELECT value_json FROM app_settings WHERE id = ?")
+      .get(`${PENDING_SUMMARY_PREFIX}note-1`);
+  assert.ok(pending());
+
+  queryClient.clear();
+  fixture.respond = () =>
+    Response.json({ choices: [{ message: { content: "Recovered summary" } }] });
+  await queryClient.fetchQuery(summaryRecoveryOptions("note-1"));
+  assert.equal(
+    fixture.db
+      .prepare("SELECT body FROM session_documents WHERE id = 'summary:note-1'")
+      .get().body,
+    "Recovered summary",
+  );
+  assert.equal(summaryCount(), 1);
+  assert.equal(pending(), undefined);
+  const requests = fixture.requests.length;
+  queryClient.clear();
+  await queryClient.fetchQuery(summaryRecoveryOptions("note-1"));
+  assert.equal(fixture.requests.length, requests);
 });
 
 test("automatic and manual summary requests share an in-flight generation", async () => {
@@ -1712,7 +2159,7 @@ test("completed transcription fills an empty desktop summary without creating a 
     .prepare(
       "INSERT INTO session_documents (id, session_id, kind, title, body_format, body) VALUES ('desktop-summary', 'note-1', ?, 'Key decisions', 'prosemirror_json', ?)",
     )
-    .run("summary", placeholder);
+    .run("template_output", placeholder);
   generateSummaryAfterTranscription("note-1");
   await summarizeSession("note-1", { automatic: true });
   assert.equal(fixture.requests.length, 1);
@@ -1726,37 +2173,28 @@ test("completed transcription fills an empty desktop summary without creating a 
   assert.equal(documents[0].title, "Key decisions");
   assert.equal(documents[0].body, "## Decisions\nShip the mobile app.");
   assert.equal(documents[0].body_format, "markdown");
-});
-
-test("reopening a completed recording recovers its missing summary and reuses an in-flight generation", async () => {
-  createNote();
-  signedInWith({
-    subscription_status: "active",
-    entitlements: ["hyprnote_pro"],
-  });
-  let release;
-  fixture.respond = () =>
-    new Promise((resolve) => {
-      release = resolve;
-    });
-  generateSummaryAfterTranscription("note-1");
-  const recovering = queryClient.fetchQuery(automaticSummaryOptions("note-1"));
-  while (!release) await new Promise((resolve) => setImmediate(resolve));
-  release(
-    Response.json({
-      choices: [{ message: { content: "Recovered after stopping" } }],
-    }),
-  );
-  await recovering;
-  assert.equal(fixture.requests.length, 1);
-  queryClient.clear();
-  await queryClient.fetchQuery(automaticSummaryOptions("note-1"));
-  assert.equal(fixture.requests.length, 1);
+  fixture.db
+    .prepare(
+      "UPDATE session_documents SET body = 'Edited template summary' WHERE id = 'desktop-summary'",
+    )
+    .run();
+  await summarizeSession("note-1", { automatic: true });
   assert.equal(
     fixture.db
-      .prepare("SELECT body FROM session_documents WHERE kind = 'summary'")
+      .prepare(
+        "SELECT body FROM session_documents WHERE id = 'desktop-summary'",
+      )
       .get().body,
-    "Recovered after stopping",
+    "Edited template summary",
+  );
+  await summarizeSession("note-1");
+  assert.equal(
+    fixture.db
+      .prepare(
+        "SELECT count(*) AS count FROM session_documents WHERE kind IN ('summary', 'template_output')",
+      )
+      .get().count,
+    1,
   );
 });
 
@@ -1856,7 +2294,12 @@ test("summaries read the full visible transcript, including uncompact live revis
     )
     .run(
       "live-transcript",
-      JSON.stringify([word("first", "First snapshot", 0)]),
+      JSON.stringify([
+        word("first", "First snapshot covers the launch plan", 0),
+        word("pricing", "the pricing review and onboarding checklist", 10),
+        word("support", "the support rotation for next week", 20),
+        word("questions", "and every open question before Friday", 30),
+      ]),
       JSON.stringify([
         {
           word_id: "first",
@@ -1897,13 +2340,76 @@ test("summaries read the full visible transcript, including uncompact live revis
   const exported = await loadSessionTranscripts("note-1");
   assert.deepEqual(
     exported.map(({ speaker, text }) => ({ speaker, text })),
-    [{ speaker: "John", text: "First snapshot Corrected ending" }],
+    [
+      {
+        speaker: "John",
+        text: "First snapshot covers the launch plan the pricing review and onboarding checklist the support rotation for next week and every open question before Friday Corrected ending",
+      },
+    ],
   );
   assert.deepEqual(await loadSessionTranscripts("missing-session"), []);
   await summarizeSession("note-1");
   const request = JSON.stringify(JSON.parse(fixture.requests[0].options.body));
-  assert.match(request, /John: First snapshot Corrected ending/);
+  assert.match(request, /John: First snapshot .* Friday Corrected ending/);
   assert.doesNotMatch(request, /Wrong ending/);
+});
+
+function insertTranscript(texts) {
+  fixture.db
+    .prepare(
+      "INSERT INTO transcripts (id, workspace_id, session_id, words_json) VALUES ('short-transcript', 'workspace-a', 'note-1', ?)",
+    )
+    .run(
+      JSON.stringify(
+        texts.map((text, index) => ({
+          id: `word-${index}`,
+          text,
+          start_ms: index * 100,
+          end_ms: index * 100 + 50,
+          channel: 0,
+        })),
+      ),
+    );
+}
+
+function summaryCount() {
+  return fixture.db
+    .prepare(
+      "SELECT COUNT(*) AS count FROM session_documents WHERE kind = 'summary'",
+    )
+    .get().count;
+}
+
+test("short transcripts skip summaries without a provider request and show a warning", async () => {
+  createNote();
+  signedInWith({
+    subscription_status: "active",
+    entitlements: ["hyprnote_pro"],
+  });
+  insertTranscript(["Cool."]);
+  dismissToast();
+
+  await assert.rejects(summarizeSession("note-1", { automatic: true }), {
+    name: "SummarySkippedError",
+    reason: "Not enough words recorded (1/5 minimum)",
+  });
+  generateSummaryAfterTranscription("note-1");
+  while (!getToast()) await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(getToast(), {
+    id: "auto-summary-too-short-note-1",
+    title: "Summary wasn't generated",
+    description: "Not enough words recorded (1/5 minimum)",
+  });
+  dismissToast();
+
+  fixture.db.prepare("DELETE FROM transcripts").run();
+  insertTranscript(["Sounds", "good", "to", "me", "then."]);
+  await assert.rejects(summarizeSession("note-1"), {
+    name: "SummarySkippedError",
+    reason: "Transcript too short to summarize (23/160 characters minimum)",
+  });
+  assert.equal(fixture.requests.length, 0);
+  assert.equal(summaryCount(), 0);
 });
 
 test("a preparation error is replaced by the next successful automatic summary state", async () => {

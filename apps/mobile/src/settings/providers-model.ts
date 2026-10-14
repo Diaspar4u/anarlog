@@ -143,7 +143,7 @@ export const TRANSCRIPTION_PROVIDERS = [
     id: "nari",
     name: "Nari Labs",
     baseUrl: "https://api.narilabs.com",
-    model: "qwen3-asr-fast:free",
+    model: "qwen3-asr-fast",
   },
   {
     id: "smallestai",
@@ -182,6 +182,36 @@ export const TRANSCRIPTION_PROVIDERS = [
     model: "muse-voice-transcribe-1.0",
   },
   {
+    id: "inworld",
+    name: "Inworld",
+    baseUrl: "https://api.inworld.ai",
+    model: "inworld/inworld-stt-1",
+  },
+  {
+    id: "gradium",
+    name: "Gradium",
+    baseUrl: "https://api.gradium.ai",
+    model: "default",
+  },
+  {
+    id: "modulate",
+    name: "Modulate",
+    baseUrl: "https://platform.modulate.ai",
+    model: "velma-2-stt-streaming-multilingual-vfast",
+  },
+  {
+    id: "alebex",
+    name: "Alebex",
+    baseUrl: "https://asr.alebex.ai",
+    model: "alebex-asr",
+  },
+  {
+    id: "amazon_bedrock",
+    name: "Amazon Bedrock",
+    baseUrl: "",
+    model: "amazon.nova-2-sonic-v1:0",
+  },
+  {
     id: "custom",
     name: "Custom",
     baseUrl: "",
@@ -201,6 +231,36 @@ export const SUMMARY_PROVIDERS = [
     name: "OpenAI",
     baseUrl: "https://api.openai.com/v1",
     model: "",
+  },
+  {
+    id: "chatgpt",
+    name: "ChatGPT subscription",
+    baseUrl: "https://chatgpt.com/backend-api/codex",
+    model: "",
+  },
+  {
+    id: "claude",
+    name: "Claude subscription",
+    baseUrl: "https://api.anthropic.com/v1",
+    model: "",
+  },
+  {
+    id: "grok",
+    name: "Grok subscription",
+    baseUrl: "https://api.x.ai/v1",
+    model: "",
+  },
+  {
+    id: "github_copilot",
+    name: "GitHub Copilot subscription",
+    baseUrl: "https://api.githubcopilot.com",
+    model: "",
+  },
+  {
+    id: "kimi_code",
+    name: "Kimi Code subscription",
+    baseUrl: "https://api.kimi.com/coding/v1",
+    model: "kimi-for-coding",
   },
   {
     id: "anthropic",
@@ -367,7 +427,10 @@ export function validateProviderConfig(
 ): ProviderConfig {
   const connection = validateProviderConnection(kind, config);
   if (config.provider === "anarlog") return defaultProviderConfig(kind);
-  const model = config.model.trim();
+  let model = config.model.trim();
+  // Nari retired its :free beta IDs on 2026-09-16 in favor of the GA models.
+  if (config.provider === "nari" && /^qwen3-asr(?:-fast)?:free$/.test(model))
+    model = model.slice(0, -":free".length);
   if (!model || model.length > 200 || /[\r\n]/.test(model))
     throw new Error("Enter a model ID.");
   return { ...connection, model };
@@ -454,4 +517,14 @@ export function normalizeTranscriptionResponse(
       ],
     },
   };
+}
+
+export function isOAuthSubscriptionProvider(
+  provider: string,
+): provider is "chatgpt" | "claude" | "grok" | "github_copilot" {
+  return ["chatgpt", "claude", "grok", "github_copilot"].includes(provider);
+}
+
+export function isSubscriptionProvider(provider: string) {
+  return isOAuthSubscriptionProvider(provider) || provider === "kimi_code";
 }

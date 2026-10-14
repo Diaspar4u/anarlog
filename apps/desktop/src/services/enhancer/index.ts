@@ -1,6 +1,6 @@
 import type { LanguageModel } from "ai";
 
-import { hasSummaryContent } from "@anlg/utils/session";
+import { hasSummaryContent, resolveSummaryDocument } from "@anlg/utils/session";
 
 import { type EnhanceEligibilitySkipCode, getEligibility } from "./eligibility";
 import {
@@ -38,7 +38,8 @@ type QueueEmptySummaryResult =
   | { type: "queued" }
   | { type: "summary_exists"; noteId: string };
 
-export type AutoEnhanceMode = "regenerate" | "if_empty";
+// "refresh" regenerates an existing summary and otherwise behaves like "if_empty".
+export type AutoEnhanceMode = "regenerate" | "if_empty" | "refresh";
 
 type EnhanceOpts = {
   isAuto?: boolean;
@@ -228,7 +229,12 @@ export class EnhancerService {
   }
 
   async requestAutoEnhance(sessionId: string, mode: AutoEnhanceMode) {
-    if (mode === "regenerate") {
+    if (mode === "refresh" && !(await this.hasGeneratingSummary(sessionId))) {
+      const result = await this.queueAutoEnhanceIfSummaryEmpty(sessionId);
+      if (result.type !== "summary_exists") return;
+    }
+
+    if (mode !== "if_empty") {
       const pendingAutoEnhance = await retryDatabaseLock(async () => {
         const snapshot = await this.loadSession(sessionId);
         const selectedTemplateId = resolveTemplateId(
@@ -430,6 +436,18 @@ export class EnhancerService {
       clearTimeout(timer);
       this.pendingRetries.delete(sessionId);
     }
+  }
+
+  private async hasGeneratingSummary(sessionId: string): Promise<boolean> {
+    return retryDatabaseLock(async () => {
+      const snapshot = await this.loadSession(sessionId);
+      const { aiTaskStore } = this.deps;
+      return snapshot.enhancedNotes.some(
+        (note) =>
+          aiTaskStore.getState().getState(createTaskId(note.id, "enhance"))
+            ?.status === "generating",
+      );
+    });
   }
 
   async resetEnhanceTasks(sessionId: string): Promise<void> {
@@ -668,25 +686,19 @@ function getSessionEnhancedNote(
   return snapshot.enhancedNotes.find((note) => note.id === noteId);
 }
 
-function getMatchingEnhancedNote(
-  snapshot: SessionContentSnapshot,
-  templateId?: string,
-): EnhancerNote | undefined {
-  const normalizedTemplateId = templateId ?? "";
-  return snapshot.enhancedNotes.find(
-    (note) => note.templateId === normalizedTemplateId,
-  );
-}
-
 function getAutoEnhancedNote(
   snapshot: SessionContentSnapshot,
   templateId?: string,
 ): EnhancerNote | undefined {
-  return (
-    getMatchingEnhancedNote(snapshot, templateId) ??
-    [...snapshot.enhancedNotes].sort(
-      (left, right) =>
-        left.position - right.position || left.id.localeCompare(right.id),
-    )[0]
+  return resolveSummaryDocument(
+    snapshot.enhancedNotes.map((note) => ({
+      ...note,
+      body: note.content,
+      template_id: note.templateId,
+      kind: note.templateId ? "template_output" : "summary",
+      sort_order: note.position,
+    })),
+    snapshot.title,
+    templateId,
   );
 }

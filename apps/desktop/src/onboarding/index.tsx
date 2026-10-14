@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { commands as sfxCommands } from "@anlg/plugin-sfx";
 import { SpeakerHigh, SpeakerX } from "@anlg/ui/components/icons";
+import { useMountEffect } from "@anlg/ui/hooks/use-mount-effect";
 import { cn } from "@anlg/utils";
 
 import { LoginSection } from "./account";
@@ -17,7 +18,6 @@ import {
   getStepStatus,
 } from "./config";
 import { FinalDescription, FinalSection, finishOnboarding } from "./final";
-import { FolderLocationSection } from "./folder-location";
 import { ImportSection } from "./imports";
 import { PermissionsSection } from "./permissions";
 import { OnboardingSection } from "./shared";
@@ -126,22 +126,22 @@ function OnboardingScreenContent({
     });
   }, [currentPlatform, currentStep]);
 
-  useEffect(() => {
+  useMountEffect(() => {
     sfxCommands.play("BGM").catch(console.error);
     return () => {
       sfxCommands.stop("BGM").catch(console.error);
     };
-  }, []);
+  });
 
   useEffect(() => {
     sfxCommands.setVolume("BGM", isMuted ? 0 : 0.2).catch(console.error);
   }, [isMuted]);
 
-  useEffect(() => {
+  useMountEffect(() => {
     if (onboardingVideoRef.current) {
       onboardingVideoRef.current.playbackRate = 0.65;
     }
-  }, []);
+  });
 
   const handleFinish = useCallback(
     (sessionId: string) => {
@@ -314,20 +314,6 @@ function OnboardingScreenContent({
             onSkip={skipCurrentStep}
           >
             <ImportSection onContinue={goNext} onSkip={skipCurrentStep} />
-          </OnboardingSection>
-
-          <OnboardingSection
-            title={<Trans>Storage</Trans>}
-            description={
-              <Trans>Where your notes and recordings are stored</Trans>
-            }
-            completedTitle={<Trans>Storage configured</Trans>}
-            status={getStepStatus("folder-location", currentStep)}
-            onBack={goBack}
-            onNext={goNext}
-            onSkip={skipCurrentStep}
-          >
-            <FolderLocationSection onContinue={goNext} />
           </OnboardingSection>
 
           <OnboardingSection

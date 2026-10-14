@@ -1,7 +1,7 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import { Platform, Text, View } from "react-native";
+import { RefreshControl, Text, View } from "react-native";
 import Animated, {
   Easing,
   ReduceMotion,
@@ -38,13 +38,17 @@ import { useTimelineSessions, type TimelineSession } from "@/data/timeline";
 import { confirmDestructive } from "@/lib/confirm";
 import { captureOperationalError } from "@/lib/error-reporting";
 import { scrollVisibility } from "@/lib/scroll-visibility";
-import { useMountEffect } from "@/lib/use-mount-effect";
-import { createStyleHook } from "@/settings/theme-provider";
-
-const ACTION_BUTTON_CARD_DISMISSED_KEY = "action-button-card-dismissed";
+import {
+  deviceHasActionButton,
+  dismissActionButtonCard,
+  useActionButtonSetup,
+} from "@/quick-actions/action-button-setup";
+import { createStyleHook, useColors } from "@/settings/theme-provider";
+import { syncMobileNow } from "@/sync/mobile-sync";
 
 export default function HomeScreen() {
   const styles = useStyles();
+  const Colors = useColors();
   const router = useRouter();
   const auth = useAuth();
   const { items, isLoading, error, hasMore, loadMore, retry } =
@@ -53,7 +57,12 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
   const [searching, setSearching] = useState(false);
-  const [showActionButtonCard, setShowActionButtonCard] = useState(false);
+  const refresh = useMutation({ mutationFn: syncMobileNow });
+  const actionButtonSetup = useActionButtonSetup();
+  const showActionButtonCard =
+    deviceHasActionButton &&
+    actionButtonSetup.data !== undefined &&
+    !actionButtonSetup.data.cardDismissed;
   const [buttonHeight, setButtonHeight] = useState(
     LISTENING_CONTROL_HEIGHT + Spacing.xs,
   );
@@ -111,26 +120,6 @@ export default function HomeScreen() {
   // Ref, not state: two taps in the same frame both pass a state check.
   const busyRef = useRef(false);
 
-  useMountEffect(() => {
-    if (Platform.OS !== "ios") return;
-    let active = true;
-    void AsyncStorage.getItem(ACTION_BUTTON_CARD_DISMISSED_KEY).then(
-      (dismissed) => {
-        if (active && dismissed !== "1") setShowActionButtonCard(true);
-      },
-      (error) => {
-        if (active) setShowActionButtonCard(true);
-        captureOperationalError(error, {
-          operation: "action_button_card_load",
-          level: "warning",
-        });
-      },
-    );
-    return () => {
-      active = false;
-    };
-  });
-
   const handleDelete = async (session: TimelineSession) => {
     const confirmed = await confirmDestructive(
       `Delete "${session.title || "Untitled"}"?`,
@@ -147,39 +136,29 @@ export default function HomeScreen() {
     }
   };
 
-  const createAndOpen = async (query = "") => {
+  const createAndOpen = async (listen = false) => {
+    const entryPoint = listen ? "start_listening" : "new_note";
     if (busyRef.current) return;
     busyRef.current = true;
     try {
       const sessionId = await createSession({
-        entryPoint: query.includes("listen=1") ? "start_listening" : "new_note",
+        entryPoint,
         ownerUserId: auth.session?.user.id,
       });
-      router.push(`/note/${sessionId}${query}`);
+      router.push({
+        pathname: "/note/[id]",
+        params: { id: sessionId, ...(listen && { listen: "1" }) },
+      });
     } catch (error) {
       captureOperationalError(error, {
         operation: "session_create",
         tags: {
-          entry_point: query.includes("listen=1")
-            ? "start_listening"
-            : "new_note",
+          entry_point: entryPoint,
         },
       });
     } finally {
       busyRef.current = false;
     }
-  };
-
-  const dismissActionButtonCard = () => {
-    setShowActionButtonCard(false);
-    void AsyncStorage.setItem(ACTION_BUTTON_CARD_DISMISSED_KEY, "1").catch(
-      (error) => {
-        captureOperationalError(error, {
-          operation: "action_button_card_dismiss",
-          level: "warning",
-        });
-      },
-    );
   };
 
   return (
@@ -225,11 +204,22 @@ export default function HomeScreen() {
           }
           onScroll={onScroll}
           scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl
+              refreshing={refresh.isPending}
+              onRefresh={() => {
+                if (!refresh.isPending) refresh.mutate();
+              }}
+              tintColor={Colors.muted}
+              colors={[Colors.muted]}
+              progressBackgroundColor={Colors.background}
+            />
+          }
           ListHeaderComponent={
             showActionButtonCard ? (
               <ActionButtonCard
                 onConfigure={() => router.push("/action-button")}
-                onDismiss={dismissActionButtonCard}
+                onDismiss={() => void dismissActionButtonCard()}
               />
             ) : null
           }
@@ -290,9 +280,7 @@ export default function HomeScreen() {
             buttonHidden ? "no-hide-descendants" : "auto"
           }
         >
-          <StartListeningButton
-            onPress={() => void createAndOpen("?listen=1")}
-          />
+          <StartListeningButton onPress={() => void createAndOpen(true)} />
         </Animated.View>
       </View>
       {searching && (

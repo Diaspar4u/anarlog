@@ -1,48 +1,20 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 
-import {
-  ArrowUpRight,
-  Bell,
-  BookOpen,
-  CalendarDots,
-  ChartLineUp,
-  Code,
-  DownloadSimple,
-  FileText,
-  FolderSimple,
-  Gear,
-  type Icon,
-  Lock,
-  MagnifyingGlass,
-  Microphone,
-  Sparkle,
-  Sun,
-  Users,
-  VideoCamera,
-  Waveform,
-  X,
-} from "@anlg/ui/components/icons";
+import { Lock, MagnifyingGlass, X } from "@anlg/ui/components/icons";
 import { useSquircleRef } from "@anlg/ui/hooks/use-squircle";
 import { cn } from "@anlg/utils";
 
 import { CustomSidebarHeader } from "./custom-sidebar-header";
+import { useSettingsNavGroups } from "./settings-nav-groups";
 
-import { type SettingsTab, type TabInput, useTabs } from "~/store/zustand/tabs";
-
-type SettingsNavItem =
-  | { id: SettingsTab; label: string; icon: Icon }
-  | {
-      id: "calendar" | "contacts" | "folders" | "templates";
-      label: string;
-      icon: Icon;
-      destination: TabInput;
-    };
-
-type SettingsNavGroup = { label: string; items: SettingsNavItem[] };
+import { useBillingAccess } from "~/auth/billing-context";
+import { type SettingsTab, useTabs } from "~/store/zustand/tabs";
 
 export function SettingsNav() {
   const { t } = useLingui();
+  const { isPro } = useBillingAccess();
+  const groups = useSettingsNavGroups();
   const [search, setSearch] = useState("");
   const searchRef = useSquircleRef<HTMLDivElement>();
   const currentTab = useTabs((state) => state.currentTab);
@@ -68,72 +40,6 @@ export function SettingsNav() {
     },
     [currentTab, updateSettingsTabState],
   );
-
-  const groups: SettingsNavGroup[] = [
-    {
-      label: t`App`,
-      items: [
-        { id: "app", label: t`General`, icon: Gear },
-        { id: "insights", label: t`Insights`, icon: ChartLineUp },
-        { id: "appearance", label: t`Appearance`, icon: Sun },
-        { id: "notifications", label: t`Notifications`, icon: Bell },
-      ],
-    },
-    {
-      label: "AI",
-      items: [
-        { id: "transcription", label: t`Transcription`, icon: Waveform },
-        {
-          id: "dictation",
-          label: t`Dictation`,
-          icon: Microphone,
-        },
-        { id: "intelligence", label: t`Intelligence`, icon: Sparkle },
-        { id: "dictionary", label: t`Dictionary`, icon: BookOpen },
-      ],
-    },
-    {
-      label: t`Workspace`,
-      items: [
-        { id: "meetings", label: t`Meetings`, icon: VideoCamera },
-        {
-          id: "folders",
-          label: t`Folders`,
-          icon: FolderSimple,
-          destination: { type: "folders" },
-        },
-        {
-          id: "calendar",
-          label: t`Calendar`,
-          icon: CalendarDots,
-          destination: { type: "calendar" },
-        },
-        {
-          id: "contacts",
-          label: t`Contacts`,
-          icon: Users,
-          destination: { type: "contacts" },
-        },
-        {
-          id: "templates",
-          label: t`Templates`,
-          icon: FileText,
-          destination: { type: "templates" },
-        },
-      ],
-    },
-    {
-      label: t`Data`,
-      items: [{ id: "imports", label: t`Imports`, icon: DownloadSimple }],
-    },
-    {
-      label: t`Advanced`,
-      items: [
-        { id: "permissions", label: t`Permissions`, icon: Lock },
-        { id: "developers", label: t`Developers`, icon: Code },
-      ],
-    },
-  ];
 
   const query = search.trim().toLowerCase();
   const visibleGroups = query
@@ -192,7 +98,7 @@ export function SettingsNav() {
         </div>
       </div>
       <div className="scrollbar-hide flex-1 overflow-y-auto">
-        <div className="flex flex-col gap-5 pb-2">
+        <div className="flex flex-col gap-5 pb-6">
           {visibleGroups.length === 0 ? (
             <div className="text-muted-foreground px-3 py-8 text-center">
               <MagnifyingGlass
@@ -210,6 +116,8 @@ export function SettingsNav() {
                 {group.label}
               </span>
               {group.items.map((item) => {
+                const requiresPro = Boolean(item.requiresPro && !isPro);
+
                 return (
                   <div key={item.id} className="relative">
                     <button
@@ -239,11 +147,10 @@ export function SettingsNav() {
                         <span className="min-w-0 flex-1 truncate">
                           {item.label}
                         </span>
-                        {"destination" in item ? (
-                          <ArrowUpRight
-                            aria-hidden
-                            className="text-muted-foreground/70 size-3.5 shrink-0"
-                            data-testid={`settings-nav-destination-icon-${item.id}`}
+                        {requiresPro ? (
+                          <Lock
+                            aria-label={t`Requires Anarlog Pro`}
+                            className="size-3.5 shrink-0"
                           />
                         ) : null}
                       </span>

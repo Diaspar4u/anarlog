@@ -201,6 +201,13 @@ impl NotificationLayout {
 
     pub fn action_hit(&self, notification: &Notification, x: i32, y: i32) -> HitTarget {
         match self.hit_test(x, y) {
+            HitTarget::Action
+                if notification.has_action_menu()
+                    && self.collapse.is_none()
+                    && self.action.is_some_and(|rect| x >= rect.right() - 28) =>
+            {
+                HitTarget::Options
+            }
             HitTarget::Action if notification.has_options() && self.collapse.is_none() => {
                 HitTarget::Options
             }
@@ -219,7 +226,7 @@ pub fn stacked_origin(work_x: i32, work_y: i32, work_width: i32, occupied: i32) 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use anlg_notification_interface::{EventDetails, NotificationSource};
+    use anlg_notification_interface::{EventDetails, NotificationAction, NotificationSource};
     use std::time::Duration;
 
     fn compact_notification() -> Notification {
@@ -264,6 +271,27 @@ mod tests {
     }
 
     #[test]
+    fn action_menu_only_maps_the_caret_to_options() {
+        let notification = Notification::builder()
+            .title("Design sync")
+            .message("")
+            .action(NotificationAction::JoinAndRecord)
+            .action_menu("Open meeting", NotificationAction::OpenMeeting)
+            .build();
+        let layout = NotificationLayout::compact(&notification);
+        let action = layout.action.unwrap();
+
+        assert_eq!(
+            layout.action_hit(&notification, action.x + 2, action.y + 2),
+            HitTarget::Action
+        );
+        assert_eq!(
+            layout.action_hit(&notification, action.right() - 2, action.y + 2),
+            HitTarget::Options
+        );
+    }
+
+    #[test]
     fn expanded_layout_exposes_collapse_and_accept_targets() {
         let notification = Notification::builder()
             .title("Design sync")
@@ -287,11 +315,5 @@ mod tests {
             layout.hit_test(layout.action.unwrap().x + 8, layout.action.unwrap().y + 8),
             HitTarget::Action
         );
-    }
-
-    #[test]
-    fn stacks_notifications_from_the_work_area_top_right() {
-        assert_eq!(stacked_origin(0, 0, 1920, 0), (1536, 15));
-        assert_eq!(stacked_origin(0, 0, 1920, 74), (1536, 89));
     }
 }

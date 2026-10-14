@@ -159,13 +159,26 @@ impl<A: RealtimeSttAdapter> ListenClientBuilder<A> {
         };
         let params = self.normalized_params();
         let request = self.build_request(&adapter, &params, channels).await?;
+        let mic_adapter = (!adapter.supports_native_multichannel()).then(|| adapter.fork_session());
+        let mic_request = if let Some(mic_adapter) = mic_adapter.as_ref() {
+            Some(
+                self.build_request(mic_adapter, &mic_stream_params(&params), channels)
+                    .await?,
+            )
+        } else {
+            None
+        };
         let initial_message = adapter.initial_message(self.api_key.as_deref(), &params, channels);
 
         Ok(ListenClientDual {
             adapter,
             request,
+            mic_request,
+            mic_adapter,
             initial_message,
             connect_policy: self.connect_policy,
+            api_key: self.api_key,
+            params,
         })
     }
 }
@@ -185,8 +198,12 @@ pub struct ListenClient<A: RealtimeSttAdapter = DeepgramAdapter> {
 pub struct ListenClientDual<A: RealtimeSttAdapter> {
     pub(crate) adapter: A,
     pub(crate) request: ClientRequestBuilder,
+    pub(crate) mic_request: Option<ClientRequestBuilder>,
+    pub(crate) mic_adapter: Option<A>,
     pub(crate) initial_message: Option<Message>,
     pub(crate) connect_policy: Option<anlg_ws_client::client::WebSocketConnectPolicy>,
+    pub(crate) api_key: Option<String>,
+    pub(crate) params: ListenParams,
 }
 
 type FinalizeMessage = Arc<dyn Fn() -> Vec<Message> + Send + Sync>;
@@ -462,15 +479,17 @@ impl<A: RealtimeSttAdapter> ListenClientDual<A> {
         self,
         stream: impl Stream<Item = ListenClientDualInput> + Send + Unpin + 'static,
     ) -> Result<(DualOutputStream, DualHandle), anlg_ws_client::Error> {
-        let mic_adapter = self.adapter.fork_session();
-        let spk_adapter = self.adapter.fork_session();
+        let mic_adapter = self
+            .mic_adapter
+            .unwrap_or_else(|| self.adapter.fork_session());
+        let spk_adapter = self.adapter;
         let mic_finalize = finalize_message_factory(&mic_adapter);
         let spk_finalize = finalize_message_factory(&spk_adapter);
         let (mic_tx, mic_rx) = tokio::sync::mpsc::channel::<TransformedInput>(32);
         let (spk_tx, spk_rx) = tokio::sync::mpsc::channel::<TransformedInput>(32);
 
         let mic_ws = websocket_client_with_keep_alive(
-            &self.request,
+            self.mic_request.as_ref().unwrap_or(&self.request),
             &mic_adapter,
             self.connect_policy.clone(),
         );
@@ -480,10 +499,12 @@ impl<A: RealtimeSttAdapter> ListenClientDual<A> {
         let mic_outbound = tokio_stream::wrappers::ReceiverStream::new(mic_rx);
         let spk_outbound = tokio_stream::wrappers::ReceiverStream::new(spk_rx);
 
-        let mic_connect =
-            mic_ws.from_audio::<ListenClientIO, _>(self.initial_message.clone(), mic_outbound);
-        let spk_connect =
-            spk_ws.from_audio::<ListenClientIO, _>(self.initial_message, spk_outbound);
+        let mic_params = mic_stream_params(&self.params);
+        let mic_initial = mic_adapter.initial_message(self.api_key.as_deref(), &mic_params, 1);
+        let spk_initial = spk_adapter.initial_message(self.api_key.as_deref(), &self.params, 1);
+
+        let mic_connect = mic_ws.from_audio::<ListenClientIO, _>(mic_initial, mic_outbound);
+        let spk_connect = spk_ws.from_audio::<ListenClientIO, _>(spk_initial, spk_outbound);
 
         let ((mic_raw, mic_handle), (spk_raw, spk_handle)) =
             tokio::try_join!(mic_connect, spk_connect)?;
@@ -567,6 +588,18 @@ async fn forward_dual_to_single<A: RealtimeSttAdapter>(
             }
         }
     }
+}
+
+// The mic stream of a split session may know its speaker count (an isolated microphone
+// carries only the local user) while the system-audio stream keeps the shared expectation.
+fn mic_stream_params(params: &ListenParams) -> ListenParams {
+    let mut mic_params = params.clone();
+    if let Some(mic_num_speakers) = mic_params.mic_num_speakers {
+        mic_params.num_speakers = Some(mic_num_speakers);
+        mic_params.max_speakers = Some(mic_num_speakers);
+        mic_params.min_speakers = mic_params.min_speakers.map(|min| min.min(mic_num_speakers));
+    }
+    mic_params
 }
 
 fn merge_streams_with_channel_remap<S1, S2>(

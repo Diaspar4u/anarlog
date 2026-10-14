@@ -9,11 +9,7 @@ import {
 } from "react-scan";
 
 import type { ReactScanSettings } from "./react-tools";
-import {
-  recordReactCommit,
-  registerReactTools,
-  updateReactTools,
-} from "./react-tools";
+import { registerReactTools, updateReactTools } from "./react-tools";
 import { publishScanData, registerScanData, type ScanEvent } from "./scan-data";
 
 const OPTIONS_KEY = "react-scan-options";
@@ -34,7 +30,6 @@ export function installReactScan(): () => void {
     // Loaded only after the native showDevtool gate permits diagnostics.
     dangerouslyForceRunInProduction: true,
     safeArea: { top: 24, right: 8, bottom: 32, left: 8 },
-    onCommitFinish: recordReactCommit,
   });
   // scan({ enabled: false, showToolbar: false }) returns without installing.
   // start() installs collection while the floating widget stays disabled.
@@ -46,35 +41,9 @@ export function installReactScan(): () => void {
   };
   Store.inspectState.value = { kind: "inspect-off" };
   let events: ScanNotification[] = [];
-  let alertsEnabled = true;
-  let audio: AudioContext | null = null;
-  let lastAlertAt = 0;
-  try {
-    alertsEnabled =
-      localStorage.getItem("react-scan-notifications-audio") !== "false";
-  } catch {
-    /* Preferences are optional. */
-  }
   const syncEvents = () => {
-    const previousIds = new Set(events.map((event) => event.id));
     events = ReactScanDevtools.getEvents();
-    publishScanData({
-      events: events.map(summarizeEvent).reverse(),
-      alertsEnabled,
-    });
-    if (
-      alertsEnabled &&
-      audio?.state === "running" &&
-      Date.now() - lastAlertAt > 1000 &&
-      events.some(
-        (event) =>
-          !previousIds.has(event.id) &&
-          ReactScanDevtools.getEventSeverity(event) === "high",
-      )
-    ) {
-      ReactScanDevtools.playNotificationSound(audio);
-      lastAlertAt = Date.now();
-    }
+    publishScanData({ events: events.map(summarizeEvent).reverse() });
   };
   const unregisterData = registerScanData({
     clear: () => ReactScanDevtools.clear(),
@@ -82,28 +51,8 @@ export function installReactScan(): () => void {
       const event = events.find((event) => event.id === id);
       return event ? ReactScanDevtools.getPrompt(mode, event) : "";
     },
-    setAlerts(enabled) {
-      if (enabled) {
-        audio ??= new AudioContext();
-        void audio.resume().catch(() => {});
-      }
-      alertsEnabled = enabled;
-      try {
-        localStorage.setItem("react-scan-notifications-audio", String(enabled));
-      } catch {
-        /* Preferences are optional. */
-      }
-      publishScanData({ alertsEnabled });
-    },
     mountInspector: (host) => ReactScanDevtools.mountInspector(host),
   });
-  // A restored audio preference still needs a user gesture in Chromium.
-  const unlockAudio = () => {
-    if (!alertsEnabled) return;
-    audio ??= new AudioContext();
-    void audio.resume().catch(() => {});
-  };
-  document.addEventListener("pointerdown", unlockAudio, { once: true });
   syncEvents();
   const unsubscribeEvents = ReactScanDevtools.subscribe(syncEvents);
   const unregister = registerReactTools({
@@ -166,8 +115,6 @@ export function installReactScan(): () => void {
   return () => {
     unsubscribers.forEach((unsubscribe) => unsubscribe?.());
     unsubscribeEvents();
-    document.removeEventListener("pointerdown", unlockAudio);
-    void audio?.close().catch(() => {});
     events = [];
     unregisterData();
     setToolbarVisible(false);

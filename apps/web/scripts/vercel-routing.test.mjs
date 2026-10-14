@@ -76,7 +76,7 @@ test("public asset redirects and legacy host redirects preserve suffixes", () =>
   assert.equal(
     routeFor("https://anarlog.so/api/assets/blog/library/image.webp")
       ?.destination,
-    "/images/blog/library/image.webp",
+    "https://static.anarlog.so/blog/library/image.webp",
   );
   assert.equal(
     routeFor("https://char.com/blog/old-article/")?.destination,
@@ -89,7 +89,6 @@ test("public asset redirects and legacy host redirects preserve suffixes", () =>
 test("exact page redirects accept canonical trailing slashes", () => {
   for (const [host, path, destination] of [
     ["anarlog.so", "/faq", "/"],
-    ["anarlog.so", "/about", "/"],
     ["anarlog.so", "/roadmap", "/changelog/"],
     ["anarlog.so", "/skill", "/skill.md"],
     ["anarlog.so", "/skills", "https://docs.anarlog.so/agents/skills"],
@@ -107,5 +106,15 @@ test("exact page redirects accept canonical trailing slashes", () => {
       assert.equal(route?.status, 301, url);
       assert.equal(route?.destination, destination, url);
     }
+  }
+});
+
+test("the About page is reachable on Anarlog and legacy hosts keep their redirect", () => {
+  for (const suffix of ["", "/"]) {
+    assert.equal(routeFor(`https://anarlog.so/about${suffix}`), undefined);
+    assert.equal(
+      routeFor(`https://hyprnote.com/about${suffix}`)?.destination,
+      "https://char.com/about",
+    );
   }
 });

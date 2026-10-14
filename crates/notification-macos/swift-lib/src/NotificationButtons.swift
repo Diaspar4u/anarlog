@@ -269,8 +269,37 @@ class ActionButton: NotificationButton {
   }
 }
 
+final class InsetButtonCell: NSButtonCell {
+  var trailingInset: CGFloat = 0
+
+  override func drawInterior(withFrame cellFrame: NSRect, in controlView: NSView) {
+    var frame = cellFrame
+    frame.size.width = max(0, frame.width - trailingInset)
+    super.drawInterior(withFrame: frame, in: controlView)
+  }
+}
+
 class CompactActionButton: ActionButton {
+  override class var cellClass: AnyClass? {
+    get { InsetButtonCell.self }
+    set {}
+  }
+
   let progressLayer = CALayer()
+
+  var trailingContentInset: CGFloat = 0 {
+    didSet {
+      (cell as? InsetButtonCell)?.trailingInset = trailingContentInset
+      invalidateIntrinsicContentSize()
+      needsDisplay = true
+    }
+  }
+
+  override var intrinsicContentSize: NSSize {
+    var size = super.intrinsicContentSize
+    size.width += trailingContentInset
+    return size
+  }
 
   private var totalDuration: Double = 0
   private var remainingDuration: Double = 0
@@ -520,6 +549,30 @@ class OptionsButton: NotificationButton {
   @objc func optionSelected(_ sender: NSMenuItem) {
     guard let notification = notification else { return }
     RustBridge.onOptionSelected(key: notification.key, selectedIndex: Int32(sender.tag))
+    notification.dismiss()
+  }
+}
+
+class SemanticMenuButton: NotificationButton {
+  var menuLabel = "Open meeting"
+
+  override func layout() {
+    super.layout()
+    layer?.cornerRadius = 0
+  }
+
+  override func performAction() {
+    guard notification != nil else { return }
+    let menu = NSMenu()
+    let item = NSMenuItem(title: menuLabel, action: #selector(selected(_:)), keyEquivalent: "")
+    item.target = self
+    menu.addItem(item)
+    menu.popUp(positioning: nil, at: NSPoint(x: 0, y: bounds.height), in: self)
+  }
+
+  @objc func selected(_ sender: NSMenuItem) {
+    guard let notification = notification else { return }
+    RustBridge.onOptionSelected(key: notification.key, selectedIndex: 0)
     notification.dismiss()
   }
 }

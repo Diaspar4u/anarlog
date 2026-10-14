@@ -75,7 +75,6 @@ export type {
   SessionShareDeletionResult,
   SessionShareLinkResult,
   SessionShareManagement,
-  SessionShareScope,
   SessionShareScopeResult,
   SettableSessionShareScope,
   ShareManagementContext,
@@ -86,6 +85,12 @@ class ShareSnapshotConflictError extends ShareManagementError {
     super();
     this.name = "ShareSnapshotConflictError";
   }
+}
+
+export function shareSnapshotConflict(
+  error: unknown,
+): PublishedSessionShareSnapshot | null {
+  return error instanceof ShareSnapshotConflictError ? error.snapshot : null;
 }
 
 export async function createOrReuseSessionShare(
@@ -562,6 +567,7 @@ export async function publishSessionShareSnapshot(
     const previewMetadata = normalizePreviewMetadata(
       input.participants,
       input.meetingAt,
+      input.eventKey,
     );
     const attachmentIds =
       input.attachmentIds === undefined
@@ -698,6 +704,7 @@ async function callRpc(
 function normalizePreviewMetadata(
   participants: string[] | undefined,
   meetingAt: string | undefined,
+  eventKey: string | undefined,
 ) {
   if (participants === undefined && meetingAt === undefined) return {};
   if (!participants || !meetingAt) {
@@ -717,6 +724,7 @@ function normalizePreviewMetadata(
   return {
     participants: normalizedParticipants,
     meetingAt: parsedMeetingAt.toISOString(),
+    ...(eventKey !== undefined && eventKey.length <= 512 ? { eventKey } : {}),
   };
 }
 

@@ -7,7 +7,7 @@ import {
   modelOptions,
   presetProviderModels,
 } from "./provider-model-catalog.ts";
-import { providersFor } from "./providers-model.ts";
+import { providersFor, isSubscriptionProvider } from "./providers-model.ts";
 
 function desktopProviders(kind) {
   const path = new URL(
@@ -82,11 +82,12 @@ test("model options retain a saved or manually entered ID without duplicates or 
   assert.deepEqual(modelOptions([], "manual"), ["manual"]);
 });
 
-for (const kind of ["stt", "llm"]) {
-  test(`${kind} includes the desktop's remote API-key providers supported by mobile recording`, () => {
+test("mobile catalogs include the desktop's remote API-key providers supported by mobile recording", () => {
+  for (const kind of ["stt", "llm"]) {
     const desktop = desktopProviders(kind);
     const mobile = providersFor(kind).filter(
-      (provider) => provider.id !== "anarlog",
+      (provider) =>
+        provider.id !== "anarlog" && !isSubscriptionProvider(provider.id),
     );
     assert.deepEqual(
       mobile.map((provider) => provider.id).sort(),
@@ -98,5 +99,5 @@ for (const kind of ["stt", "llm"]) {
       if (ts.isStringLiteral(provider.baseUrl))
         assert.equal(match.baseUrl, provider.baseUrl.text);
     }
-  });
-}
+  }
+});

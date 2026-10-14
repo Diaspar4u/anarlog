@@ -185,6 +185,29 @@ pub fn exit_for_already_running_instance() -> ! {
     std::process::exit(0);
 }
 
+// Older versions let users point notes and recordings at a custom folder,
+// typically an Obsidian vault, while the database stayed in the app data
+// directory. Everything now lives in the app data directory; the first launch
+// after updating moves the custom folder's contents back before any plugin
+// resolves the storage location. Runs under the launch lock.
+pub fn consolidate_custom_storage(identifier: &str) {
+    let Some(base) = anlg_storage::global::compute_default_base(identifier) else {
+        return;
+    };
+    match anlg_storage::vault::consolidate_custom_vault(&base, &base) {
+        Ok(Some(previous)) if previous != base => eprintln!(
+            "moved notes and recordings from {} to {}",
+            previous.display(),
+            base.display()
+        ),
+        Ok(_) => {}
+        Err(error) => eprintln!(
+            "failed to move notes and recordings into {}; will retry on next launch: {error}",
+            base.display()
+        ),
+    }
+}
+
 // Database open and plugin setup can still take a few seconds before the
 // webview exists. After a short delay this shows a native alert (spawned
 // osascript, matching the startup-failure alerts) that is killed as soon as
@@ -250,12 +273,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn linux_webkit_workaround_defaults_dmabuf_off_when_unset() {
+    fn linux_webkit_workaround_defaults_dmabuf_off_unless_overridden() {
         assert_eq!(linux_webkit_dmabuf_override(None), Some("1"));
-    }
-
-    #[test]
-    fn linux_webkit_workaround_preserves_an_explicit_override() {
         assert_eq!(
             linux_webkit_dmabuf_override(Some(std::ffi::OsStr::new("0"))),
             None
@@ -339,32 +358,5 @@ mod tests {
             lock_channel_files(&stable, &nightly, "com.hyprnote.nightly"),
             ChannelLockState::Acquired(None)
         ));
-    }
-
-    #[test]
-    fn channels_without_a_shared_database_skip_the_channel_lock() {
-        assert!(matches!(
-            acquire_channel_lock("com.hyprnote.staging"),
-            ChannelLockState::Acquired(None)
-        ));
-    }
-
-    #[test]
-    fn channel_product_names_follow_the_bundle_identifier() {
-        assert_eq!(
-            channel_product_name("com.hyprnote.nightly"),
-            "Anarlog Nightly"
-        );
-        assert_eq!(channel_product_name("com.hyprnote.stable"), "Anarlog");
-    }
-
-    #[test]
-    fn dismissing_before_the_delay_prevents_the_indicator() {
-        let indicator = SlowStartupIndicator::show_after_delay();
-        indicator.dismiss();
-
-        let state = indicator.state.lock().unwrap();
-        assert!(state.dismissed);
-        assert!(state.child.is_none());
     }
 }

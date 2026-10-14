@@ -1,5 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 
 import {
   Buildings,
@@ -7,6 +7,7 @@ import {
   MagnifyingGlass,
   MinusCircle,
   Plus,
+  X,
 } from "@anlg/ui/components/icons";
 import { Button } from "@anlg/ui/components/ui/button";
 import { Input } from "@anlg/ui/components/ui/input";
@@ -39,6 +40,11 @@ import { RelatedNotesSection } from "./related-notes";
 import { ContactFacehash } from "./shared";
 
 import { useOptionalAuth } from "~/auth";
+import {
+  EnrichContactButton,
+  EnrichContactStatus,
+  useCrmEnrichment,
+} from "~/crm/enrich-contact";
 import { useOwnerUserId } from "~/shared/owner-user";
 
 export function DetailsColumn({
@@ -58,8 +64,41 @@ export function DetailsColumn({
   const auth = useOptionalAuth();
   const ownerUserId = auth?.session?.user.id ?? localOwnerUserId;
   const readOnly = human?.id === ownerUserId;
+  const user = humans.find((candidate) => candidate.id === ownerUserId) ?? null;
+  const enrichment = useCrmEnrichment({
+    human,
+    ownerUserId: ownerUserId ?? "",
+  });
   const { t } = useLingui();
   const [showCompactIdentity, setShowCompactIdentity] = useState(false);
+  const [addingEmail, setAddingEmail] = useState(false);
+  const pendingEmailsRef = useRef<{
+    humanId: string;
+    base: string[];
+    list: string[];
+  } | null>(null);
+  const currentAdditionalEmails = () => {
+    if (!human) return [];
+    const pending = pendingEmailsRef.current;
+    return pending?.humanId === human.id &&
+      pending.base === human.additionalEmails
+      ? pending.list
+      : human.additionalEmails;
+  };
+  const persistAdditionalEmails = (list: string[]) => {
+    if (!human) return;
+    pendingEmailsRef.current = {
+      humanId: human.id,
+      base: human.additionalEmails,
+      list,
+    };
+    void updateHuman(human.id, { additionalEmails: list }).catch((error) => {
+      console.error("[contacts] failed to update contact", error);
+      if (pendingEmailsRef.current?.list === list) {
+        pendingEmailsRef.current = null;
+      }
+    });
+  };
   const personSessions = useHumanSessions(human?.id ?? "");
   const organizationName =
     organizations.find(
@@ -67,21 +106,26 @@ export function DetailsColumn({
     )?.name ?? null;
   const contactSummary = useContactSummary({
     human,
+    user,
     organizationName,
     sessions: personSessions,
   });
-  const duplicatesWithData = React.useMemo(
-    () =>
-      human?.email
-        ? humans.filter(
-            (candidate) =>
-              candidate.id !== human.id &&
-              candidate.id !== ownerUserId &&
-              candidate.email === human.email,
-          )
-        : [],
-    [human, humans, ownerUserId],
-  );
+  const duplicatesWithData = React.useMemo(() => {
+    if (!human) return [];
+    const humanEmails = contactEmails(human);
+    const humanName = human.name.trim().toLowerCase();
+    return humans.filter((candidate) => {
+      if (candidate.id === human.id || candidate.id === ownerUserId) {
+        return false;
+      }
+      const candidateEmails = contactEmails(candidate);
+      if ([...candidateEmails].some((email) => humanEmails.has(email))) {
+        return true;
+      }
+      const candidateName = candidate.name.trim().toLowerCase();
+      return humanName !== "" && candidateName === humanName;
+    });
+  }, [human, humans, ownerUserId]);
 
   const handleMergeContacts = useCallback(
     (duplicateId: string) => {
@@ -122,6 +166,11 @@ export function DetailsColumn({
                 ? () => persistContactAvatar("human", human.id, null)
                 : undefined
             }
+            actions={
+              !readOnly && ownerUserId ? (
+                <EnrichContactButton enrichment={enrichment} human={human} />
+              ) : undefined
+            }
           />
 
           <div
@@ -153,6 +202,10 @@ export function DetailsColumn({
               )}
             </div>
 
+            {!readOnly && ownerUserId && (
+              <EnrichContactStatus enrichment={enrichment} human={human} />
+            )}
+
             {!readOnly && duplicatesWithData.length > 0 && (
               <div className="border-border border-b bg-red-50 px-6 py-4">
                 <h4 className="mb-1 text-sm font-semibold text-red-900">
@@ -163,7 +216,7 @@ export function DetailsColumn({
                   {duplicatesWithData.length > 1
                     ? `${duplicatesWithData.length} contacts`
                     : "Another contact"}{" "}
-                  with the same email address{" "}
+                  with the same name or email{" "}
                   {duplicatesWithData.length > 1 ? "exist" : "exists"}. Merge to
                   consolidate all related notes and information.
                 </p>
@@ -210,7 +263,12 @@ export function DetailsColumn({
                   [t`Name`, human.name],
                   [t`Job Title`, human.jobTitle],
                   [t`Company`, organizationName],
-                  [t`Email`, human.email],
+                  [
+                    t`Email`,
+                    [human.email, ...human.additionalEmails]
+                      .filter((email) => email.trim() !== "")
+                      .join("\n"),
+                  ],
                   [t`Phone`, human.phone],
                   [t`LinkedIn`, human.linkedinUsername],
                   [t`Notes`, human.memo],
@@ -275,6 +333,63 @@ export function DetailsColumn({
                   personId={human.id}
                   value={human.email}
                 />
+                {human.additionalEmails.map((email) => (
+                  <EditableAdditionalEmailRow
+                    key={`${human.id}:${email}`}
+                    value={email}
+                    onCommit={(next, previous) => {
+                      const trimmed = next.trim();
+                      if (trimmed === previous) return;
+                      const current = currentAdditionalEmails();
+                      persistAdditionalEmails(
+                        trimmed
+                          ? current.map((entry) =>
+                              entry === previous ? trimmed : entry,
+                            )
+                          : current.filter((entry) => entry !== previous),
+                      );
+                    }}
+                    onRemove={(current) => {
+                      persistAdditionalEmails(
+                        currentAdditionalEmails().filter(
+                          (entry) => entry !== current,
+                        ),
+                      );
+                    }}
+                  />
+                ))}
+                {addingEmail ? (
+                  <EditableAdditionalEmailRow
+                    key={`${human.id}:new-email`}
+                    value=""
+                    autoFocus
+                    onCommit={(next) => {
+                      setAddingEmail(false);
+                      const trimmed = next.trim();
+                      if (trimmed) {
+                        persistAdditionalEmails([
+                          ...currentAdditionalEmails(),
+                          trimmed,
+                        ]);
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="border-border flex items-center border-b px-4 py-3">
+                    <div className="w-28" />
+                    <div className="flex-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground -ml-2 h-7 px-2"
+                        onClick={() => setAddingEmail(true)}
+                      >
+                        <Trans>Add email</Trans>
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 <EditablePersonPhoneField
                   key={`${human.id}:phone`}
                   personId={human.id}
@@ -486,6 +601,57 @@ function EditablePersonEmailField({
   );
 }
 
+function EditableAdditionalEmailRow({
+  value,
+  autoFocus = false,
+  onCommit,
+  onRemove,
+}: {
+  value: string;
+  autoFocus?: boolean;
+  onCommit: (value: string, previous: string) => void;
+  onRemove?: (current: string) => void;
+}) {
+  const { t } = useLingui();
+  const lastCommittedRef = useRef(value);
+
+  return (
+    <div className="border-border flex items-center border-b px-4 py-3">
+      <div className="w-28" />
+      <div className="flex flex-1 items-center gap-1">
+        <Input
+          type="email"
+          defaultValue={value}
+          autoFocus={autoFocus}
+          onBlur={(event) => {
+            onCommit(event.target.value, lastCommittedRef.current);
+            lastCommittedRef.current = event.target.value.trim();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.currentTarget.blur();
+            }
+          }}
+          placeholder="jane@example.com"
+          className="h-7 border-none p-0 text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+        />
+        {onRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground size-6 shrink-0"
+            aria-label={t`Remove email`}
+            onClick={() => onRemove(lastCommittedRef.current)}
+          >
+            <X className="size-3.5" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function EditablePersonPhoneField({
   personId,
   value,
@@ -604,7 +770,7 @@ export function ContactOrganizationSelector({
         >
           {organization?.name ? (
             <div className="flex items-center">
-              <span className="text-base">{organization.name}</span>
+              <span className="text-base md:text-sm">{organization.name}</span>
               <span className="group text-muted-foreground ml-2">
                 <MinusCircle
                   className="text-muted-foreground size-4 cursor-pointer hover:text-red-600"
@@ -616,7 +782,7 @@ export function ContactOrganizationSelector({
               </span>
             </div>
           ) : (
-            <span className="text-muted-foreground flex items-center gap-1 text-base">
+            <span className="text-muted-foreground flex items-center gap-1 text-base md:text-sm">
               <Plus className="size-4" />
               <Trans>Add organization</Trans>
             </span>
@@ -792,6 +958,14 @@ function OrganizationControl({
         </div>
       </form>
     </div>
+  );
+}
+
+function contactEmails(contact: HumanRecord): Set<string> {
+  return new Set(
+    [contact.email, ...contact.additionalEmails]
+      .map((email) => email.trim().toLowerCase())
+      .filter((email) => email !== ""),
   );
 }
 

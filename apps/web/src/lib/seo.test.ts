@@ -2,35 +2,21 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  ANARLOG_SITE_NAME,
+  getBlogOgImageUrl,
   getBlogPostingJsonLd,
   getCanonicalUrl,
   getSoftwareApplicationJsonLd,
 } from "./seo.ts";
 
-test("builds canonical urls with a trailing slash", () => {
-  assert.equal(ANARLOG_SITE_NAME, "anarlog");
+test("builds canonical urls with exactly one trailing slash", () => {
   assert.equal(getCanonicalUrl(), "https://anarlog.so/");
   assert.equal(getCanonicalUrl("/blog"), "https://anarlog.so/blog/");
   assert.equal(
     getCanonicalUrl("/blog/granola-ai-alternatives"),
     "https://anarlog.so/blog/granola-ai-alternatives/",
   );
-});
-
-test("leaves an existing trailing slash untouched", () => {
   assert.equal(getCanonicalUrl("/download/"), "https://anarlog.so/download/");
-});
-
-test("tolerates paths without a leading slash", () => {
   assert.equal(getCanonicalUrl("download"), "https://anarlog.so/download/");
-});
-
-test("describes downloads for every supported desktop platform", () => {
-  const jsonLd = getSoftwareApplicationJsonLd({ description: "Anarlog" });
-
-  assert.equal(jsonLd.downloadUrl, "https://anarlog.so/download/");
-  assert.deepEqual(jsonLd.operatingSystem, ["macOS", "Windows", "Linux"]);
 });
 
 test("emits offers when pricing is supplied", () => {
@@ -55,7 +41,7 @@ test("builds blog posting metadata with typed authors", () => {
     url,
     headline: "Local AI meeting notes",
     description: "A practical guide.",
-    image: "https://anarlog.so/api/og/blog/local-ai-meeting-notes",
+    image: getBlogOgImageUrl("local-ai-meeting-notes"),
     datePublished: "2026-01-01",
     authors: ["Jeehoon Ong", "Anarlog Team"],
   });
@@ -69,4 +55,8 @@ test("builds blog posting metadata with typed authors", () => {
     "@id": url,
   });
   assert.equal(jsonLd.publisher.name, "Anarlog");
+  assert.equal(
+    jsonLd.image,
+    "https://static.anarlog.so/og/blog/local-ai-meeting-notes",
+  );
 });

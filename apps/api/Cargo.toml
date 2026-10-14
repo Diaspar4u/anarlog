@@ -8,6 +8,7 @@ anlg-analytics = { workspace = true }
 anlg-api-auth = { workspace = true }
 anlg-api-calendar = { workspace = true }
 anlg-api-cloud = { workspace = true }
+anlg-api-crm = { workspace = true }
 anlg-api-env = { workspace = true }
 anlg-api-mail = { workspace = true }
 anlg-api-meeting-import = { workspace = true }
@@ -25,7 +26,6 @@ anlg-llm-proxy = { workspace = true }
 anlg-observability = { workspace = true }
 anlg-transcribe-proxy = { workspace = true }
 anlg-user-error = { workspace = true }
-owhisper-client = { workspace = true }
 
 axum = { workspace = true, features = ["ws"] }
 opentelemetry = { workspace = true }

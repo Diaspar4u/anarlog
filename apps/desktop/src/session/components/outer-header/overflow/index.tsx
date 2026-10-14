@@ -28,11 +28,11 @@ import {
 } from "@anlg/ui/components/ui/dropdown-menu";
 
 import { MetadataPanelContent } from "../metadata";
+import { AlwaysOnTop } from "./always-on-top";
 import { DeleteNote } from "./delete";
 import { ExportModal } from "./export-modal";
 import { Listening } from "./listening";
 import { LockNote } from "./lock-note";
-import { ShowInFolder } from "./misc";
 
 import { useAudioPlayer } from "~/audio-player";
 import { openFloatingMeetingPanel } from "~/meeting-float/host";
@@ -92,11 +92,8 @@ export function OverflowButton({
     allowListening &&
     floatingBarEnabled &&
     sessionMode === "active";
-  const hasMeetingActions =
-    showListeningAction ||
-    showRetranscribeAction ||
-    showUploadActions ||
-    canOpenFloatingPanel;
+  const hasRecordingActions =
+    showListeningAction || showRetranscribeAction || showUploadActions;
   const openExportModal = () => {
     setOpen(false);
     setHasOpenedExportModal(true);
@@ -163,16 +160,6 @@ export function OverflowButton({
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={openExportModal}
-              className="cursor-pointer"
-            >
-              <FileArrowDown />
-              <span>
-                <Trans>Export</Trans>
-              </span>
-            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={openVersionHistory}
               className="cursor-pointer"
@@ -220,18 +207,17 @@ export function OverflowButton({
                 </DropdownMenuItem>
               </>
             )}
-            {canOpenFloatingPanel && (
-              <DropdownMenuItem
-                onClick={handleOpenFloatingPanel}
-                className="cursor-pointer"
-              >
-                <PictureInPicture />
-                <span>
-                  <Trans>Open floating panel</Trans>
-                </span>
-              </DropdownMenuItem>
-            )}
-            {hasMeetingActions && <DropdownMenuSeparator />}
+            {hasRecordingActions && <DropdownMenuSeparator />}
+            <DropdownMenuItem
+              onClick={openExportModal}
+              className="cursor-pointer"
+            >
+              <FileArrowDown />
+              <span>
+                <Trans>Export</Trans>
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             {!standaloneWindow && (
               <DropdownMenuItem
                 onClick={handleOpenStandaloneWindow}
@@ -243,7 +229,19 @@ export function OverflowButton({
                 </span>
               </DropdownMenuItem>
             )}
-            <ShowInFolder sessionId={sessionId} />
+            {canOpenFloatingPanel && (
+              <DropdownMenuItem
+                onClick={handleOpenFloatingPanel}
+                className="cursor-pointer"
+              >
+                <PictureInPicture />
+                <span>
+                  <Trans>Open floating panel</Trans>
+                </span>
+              </DropdownMenuItem>
+            )}
+            <AlwaysOnTop />
+            <DropdownMenuSeparator />
             <LockNote sessionId={sessionId} />
             <DeleteNote sessionId={sessionId} />
           </AppFloatingPanel>

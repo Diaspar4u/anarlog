@@ -3,10 +3,12 @@ import type { JSONContent } from "@anlg/editor/note";
 
 import { liveQueryClient, useLiveQuery } from "~/db";
 import { flushDatabaseWrites } from "~/db/write-queue";
+import { sharedNoteEventKey } from "~/shared-notes/event-key";
 import { DEFAULT_USER_ID } from "~/shared/utils";
 
 const EMPTY_DOCUMENT: JSONContent = { type: "doc", content: [] };
 const EMPTY_WORKSPACES: AvailableShareWorkspace[] = [];
+const EMPTY_PERSONAL_WORKSPACE_ID = "";
 const MAX_DOCUMENT_DEPTH = 64;
 const MAX_DOCUMENT_NODES = 50_000;
 
@@ -24,9 +26,12 @@ type SessionShareSourceSqlRow = {
   id: string;
   document_id: string | null;
   workspace_id: string;
+  owner_user_id: string | null;
   title: string;
   created_at: string;
   started_at: string;
+  event_tracking_id: string | null;
+  event_started_at: string | null;
   participants_json: string;
   body: string;
   body_format: string;
@@ -43,12 +48,17 @@ type AvailableShareWorkspaceSqlRow = {
   name: string;
 };
 
+type PersonalWorkspaceSqlRow = {
+  id: string;
+};
+
 export type SessionShareSource = {
   sessionId: string;
   documentId: string | null;
   workspaceId: string;
   title: string;
   meetingAt: string;
+  eventKey: string;
   participants: string[];
   body: JSONContent;
   rawBody: string;
@@ -65,9 +75,12 @@ const SESSION_SHARE_SOURCE_SQL = `
     session.id,
     share_document.id AS document_id,
     session.workspace_id,
+    session.owner_user_id,
     session.title,
     session.created_at,
     session.started_at,
+    calendar_event.tracking_id_event AS event_tracking_id,
+    calendar_event.started_at AS event_started_at,
     COALESCE((
       SELECT json_group_array(json_object('name', ordered_participant.name))
       FROM (
@@ -131,6 +144,8 @@ const SESSION_SHARE_SOURCE_SQL = `
   FROM sessions AS session
   LEFT JOIN session_documents AS share_document
     ON share_document.id = (${SESSION_SHARE_DOCUMENT_ID_SQL})
+  LEFT JOIN events AS calendar_event
+    ON calendar_event.id = NULLIF(session.event_id, '')
   WHERE session.id = ?
     AND session.deleted_at IS NULL
   LIMIT 1
@@ -146,6 +161,21 @@ const AVAILABLE_SHARE_WORKSPACES_SQL = `
   WHERE workspace.kind = 'shared'
     AND workspace.deleted_at IS NULL
   ORDER BY workspace.name COLLATE NOCASE, workspace.id
+`;
+
+const PERSONAL_WORKSPACE_SQL = `
+  SELECT workspace.id
+  FROM workspaces AS workspace
+  JOIN workspace_memberships AS membership
+    ON membership.workspace_id = workspace.id
+    AND membership.user_id = ?
+    AND membership.role = 'owner'
+    AND membership.deleted_at IS NULL
+  WHERE workspace.owner_user_id = ?
+    AND workspace.kind = 'personal'
+    AND workspace.deleted_at IS NULL
+  ORDER BY workspace.id
+  LIMIT 1
 `;
 
 export async function loadSessionShareSource(
@@ -190,6 +220,7 @@ export async function loadSessionShareSource(
     workspaceId: resolveSourceWorkspace(row, normalizedAccountUserId),
     title: row.title,
     meetingAt: resolveMeetingAt(row.started_at, row.created_at),
+    eventKey: sharedNoteEventKey(row.event_tracking_id, row.event_started_at),
     participants: parseParticipantNames(row.participants_json),
     body,
     rawBody: row.body,
@@ -250,6 +281,26 @@ export function useAvailableShareWorkspaces(
   return enabled ? data : EMPTY_WORKSPACES;
 }
 
+export function usePersonalWorkspaceId(
+  accountUserId: string | null | undefined,
+): string {
+  const normalizedAccountUserId = accountUserId?.trim() ?? "";
+  const enabled = Boolean(
+    normalizedAccountUserId && normalizedAccountUserId !== DEFAULT_USER_ID,
+  );
+  const { data = EMPTY_PERSONAL_WORKSPACE_ID } = useLiveQuery<
+    PersonalWorkspaceSqlRow,
+    string
+  >({
+    sql: PERSONAL_WORKSPACE_SQL,
+    params: [normalizedAccountUserId, normalizedAccountUserId],
+    enabled,
+    mapRows: (rows) => rows[0]?.id ?? "",
+  });
+
+  return enabled ? data : EMPTY_PERSONAL_WORKSPACE_ID;
+}
+
 function resolveSourceWorkspace(
   row: SessionShareSourceSqlRow,
   accountUserId: string,
@@ -288,8 +339,11 @@ function resolveSourceWorkspace(
   if (row.assigned_workspace_kind === "shared") {
     if (
       row.assigned_workspace_deleted_at === null &&
+      row.assigned_workspace_role !== null &&
+      row.assigned_workspace_role !== "" &&
       (row.assigned_workspace_role === "owner" ||
-        row.assigned_workspace_role === "admin")
+        row.assigned_workspace_role === "admin" ||
+        row.owner_user_id === accountUserId)
     ) {
       return assignedWorkspaceId;
     }

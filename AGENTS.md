@@ -15,6 +15,61 @@ Anarlog is a pnpm and Rust workspace. Read the nearest `AGENTS.md` before changi
 
 Sessions are the core entity: all notes are backed by sessions. ProseMirror powers the editor (`packages/editor`, via `@handlewithcare/react-prosemirror`); documents use TipTap-dialect ProseMirror JSON, with converters/validation in `crates/tiptap`.
 
+<!-- gitbutler-agent-setup:start -->
+## Version control on `gitbutler/workspace`
+
+Check the active checkout's branch with `git symbolic-ref --quiet --short HEAD` before applying this section or any GitButler skill. This read-only branch check is allowed before selecting the version-control interface.
+
+Only when the result is exactly `gitbutler/workspace`, use the repository-local [but](.agents/skills/gitbutler/SKILL.md), [create-prs](.agents/skills/create-prs/SKILL.md), [fix-prs](.agents/skills/fix-prs/SKILL.md), [update-prs](.agents/skills/update-prs/SKILL.md), and [sweep-workspace](.agents/skills/sweep-workspace/SKILL.md) skills as relevant. All rules below apply only on that branch. On any other branch or detached HEAD, use the normal Git workflow; do not activate these skills, initialize GitButler, or switch branches to satisfy this condition.
+
+- For overlapping PR or CI repair requests on this branch, use [fix-prs](.agents/skills/fix-prs/SKILL.md) instead of [fix-ready-prs](.agents/skills/fix-ready-prs/SKILL.md); preserve any narrower user scope.
+- Use GitButler (`but`) for version-control inspection and write operations, including status, diffs, branching, committing, pushing, and history edits.
+- Assume multiple agents may be working in this repository. Do not move, amend, squash, discard, commit, push, or otherwise modify another agent's work unless the user asks.
+- For commit just/only/specific changes on a new branch (selected-change requests), use the two-command fast path from the GitButler skill: `but diff`, then `but commit -b <branch> -m "message" <id> <id>`.
+- For that fast path, after the commit succeeds, stop and summarize; do not run separate branch, staging, status, or diff commands unless the commit output is missing information you need.
+- Use the repository-local GitButler skill for command recipes and syntax before guessing flags, using `--help`, or translating Git habits directly.
+- Mutation commands report their result without appending workspace status. Add `--status-after` only when the next step needs resulting workspace IDs or details; otherwise do not rerun status or diff to verify success.
+- Organize GitButler branches and PRs around coherent areas of work, such as sync, Charlie, or agent runtime. Reuse the relevant existing branch for related changes and follow-ups across sessions. Keep commits focused within that branch. Do not create a separate branch or stacked PR for every small task; split only when work has an independent purpose or needs to ship separately. Preserve other agents’ uncommitted work and avoid rewriting shared history.
+- Do not push or open pull requests unless the user asks.
+- Keep commit messages and pull request descriptions succinct: explain what changed, why it changed, and any important decision.
+
+### Amend local fixes into the right commits
+
+- For small cleanup or follow-up fixes, amend an unpublished local commit when the change clearly belongs with that commit's intent.
+- Do not create tiny fixup commits unless the user asks.
+- Use GitButler to move the relevant changes into the commit where they belong.
+- Ask before rewriting pushed, reviewed, shared, or ambiguous history.
+
+### Split unrelated changes into separate commits
+
+- If one file contains unrelated changes, split them by hunk instead of committing the whole file.
+- Keep tests with the behavior they verify.
+- Split generated output, docs-only edits, or mechanical cleanup into separate commits when each commit remains coherent on its own.
+- If the split is ambiguous, summarize the options before committing.
+
+### Update from the target branch automatically
+
+- When GitButler status shows new changes on the target branch and the workspace holds only this session's branches, update with `but pull` directly — its output reports the result and `but undo` reverts it.
+- If an update you started on your own initiative reports conflicted commits, stop and ask before resolving them (`but undo` reverts the pull if the user prefers).
+- When other agents' branches are applied, run `but pull --check` first and ask before updating if it reports conflicts or their branches would move.
+- If the user asks you to handle update conflicts, use GitButler's conflict tools. Ask before resolving semantic conflicts, dependency updates, generated files, or conflicts involving another person's work.
+
+### Commit checkpoints after each turn
+
+- Commit after a working checkpoint, when the requested change is complete and relevant checks have passed or been reported.
+- Treat checkpoint commits as local savepoints, not final review history.
+- When the user asks you to tidy the history, use GitButler to squash commits, reword commits, and move changes between commits where appropriate.
+- Only tidy unpublished local history unless the user explicitly authorizes changing pushed or shared history.
+<!-- gitbutler-agent-setup:end -->
+
+## GitHub Enterprise API access
+
+- For `fastrepl/char` and `fastrepl/anarlog`, prefer `~/.local/bin/gh-enterprise` over plain `gh` for GitHub API, PR, issue, and CI operations when the helper is installed. Examples: `gh-enterprise api repos/fastrepl/anarlog/pulls/123`, `gh-enterprise pr view 123 -R fastrepl/anarlog`, and `gh-enterprise api graphql -f query='...'`.
+- The helper renews a GitHub App installation token automatically. Both repositories share its verified REST quota of 15,000 requests/hour and GraphQL quota of 10,000 points/hour; secondary limits still apply. Batch reads, paginate completely, and respect reset/retry headers instead of repeated retries.
+- The app supports repository contents, PR/issue updates, and Actions writes. Writes appear as the app bot. Existing authorization, review, merge, and environment-selection requirements still apply; possessing the token is not permission to act.
+- Git, GitButler, and connectors do not automatically use this helper. Use existing user authentication when an endpoint requires a user identity or unsupported permissions; do not bypass permission failures or broaden app access automatically.
+- Credentials stay outside the repository. Never print tokens or keys, commit them, or put them in command arguments. If the helper is missing on another machine, report the setup gap and use existing authorized access; do not assume the higher quota applies to plain `gh`.
+
 ## Commands
 
 - Install: `pnpm install --frozen-lockfile`. Match CI's Node 22, `package.json#packageManager`, and `rust-toolchain.toml`; keep lockfiles in sync with intentional dependency changes.
@@ -22,8 +77,9 @@ Sessions are the core entity: all notes are backed by sessions. ProseMirror powe
 - Typecheck (TS): `pnpm -F <package-name> typecheck`; use `pnpm -r typecheck` for changes spanning packages. Use actual names from package manifests, such as `@anlg/desktop`.
 - Typecheck (Rust): `cargo check --locked -p <package>`; match the relevant workflow's features and target. A root `cargo check` does not cover the separate enterprise workspace or every platform.
 - Build shared UI before desktop/web checks: `pnpm -F @anlg/ui build`.
-- Desktop dev: `pnpm exec turbo dev:desktop`.
-- Web dev: `pnpm exec turbo dev:web`.
+- Desktop dev: `pnpm dev:desktop`.
+- Web dev: `pnpm dev:web`.
+- Combined desktop/web/API/local Supabase: `pnpm dev`; backend only: `pnpm dev:api`. Requires Docker, Task, and API configuration. Process Compose 1.122.0+ owns process lifecycle and logs; Turbo owns the shared UI build. See `CONTRIBUTING.md` for control ports and headless use.
 - Dev docs: https://docs.anarlog.so
 
 ## Pre-commit verification
@@ -37,6 +93,7 @@ Treat `.github/workflows/` and their composite actions as the source of truth fo
 - `ci.yaml`: run both license-boundary Python commands and the complete `node --test` command listed there. These run on every PR, including documentation-only changes.
 - `zizmor.yaml` runs on every PR. Reproduce `uvx zizmor --format sarif .` (save output outside the repository) with read-only GitHub access; report unavailable authenticated checks. Inspect the SARIF findings: a successful scan/upload does not mean zero findings. Fix findings introduced by workflow/action changes and report existing findings separately.
 - For TypeScript changes, run affected packages' typechecks and existing test scripts. For Rust changes, run affected crate checks/tests with the workflow's flags; retain `--locked`, feature selections, test filters, and Clippy's `-D warnings`. Add regression coverage for changed behavior, especially persistence, auth, billing, and recording lifecycles.
+- Decide what to test, delete, or leave untested with `.agents/skills/testing/SKILL.md`: one regression test per fix, no tests for CSS, copy, mock call counts, private state, or file layout. Structural and import-boundary rules belong in lint rules, not tests.
 
 ### Checks by component
 
@@ -125,9 +182,9 @@ Naming rules:
 
 The cloud image is Ubuntu 24.04 x86_64 with Node, pnpm, Rust, and the Linux libraries needed for Tauri (see `scripts/setup-linux-tauri.sh` and `scripts/setup-linux-others.sh`), plus `xvfb`/`dbus-x11`. Verify installed tool versions against the repository/CI pins above; an existing image may lag a toolchain update. The startup update script installs workspace dependencies and builds `@anlg/ui`; it does not re-install system packages.
 
-- Use `pnpm exec turbo dev:desktop` / `pnpm exec turbo dev:web`: Turbo builds `@anlg/ui` first via `dependsOn`; raw `pnpm dev:*` does not.
+- Use `pnpm dev:desktop` / `pnpm dev:web`: Process Compose builds `@anlg/ui` through Turbo before starting the app. The older `pnpm exec turbo dev:*` entrypoints also work.
 - No `start`/`terminals` are configured in the environment (only the `install`/update script). Dev servers are started on demand, not auto-launched on boot.
-- A real XFCE desktop runs on the VNC display `:1` (this is what computer-use sees). Run the desktop app there so it is visible: `DISPLAY=:1 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe WEBKIT_DISABLE_COMPOSITING_MODE=1 WEBKIT_DISABLE_DMABUF_RENDERER=1 pnpm exec turbo dev:desktop`. The first native build is slow; the desktop Vite frontend serves on `:1422`.
+- A real XFCE desktop runs on the VNC display `:1` (this is what computer-use sees). Run the desktop app there so it is visible: `DISPLAY=:1 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe WEBKIT_DISABLE_COMPOSITING_MODE=1 WEBKIT_DISABLE_DMABUF_RENDERER=1 pnpm dev:desktop`. The first native build is slow; the desktop Vite frontend serves on `:1422`.
 - `dotenvx` loads `.env.supabase`/`.env` with `--ignore MISSING_ENV_FILE`. Desktop local notes and public web pages can run without cloud credentials. Auth, CloudSync, hosted STT/LLM, and billing require the relevant services/configuration; local development uses `task supabase-start` (Docker) and `cargo run -p api`. Provider features also need provider credentials.
 - Web dev serves on `:3000`; auth/DB-backed routes require the Supabase stack.
 - Swift formatting requires an available `swift format` executable. If missing, check changed non-Swift files and report the exact unchecked Swift paths; verify them on a host with the formatter. Do not treat a formatter startup error as proof that Swift files are formatted, or waive other formatting failures.

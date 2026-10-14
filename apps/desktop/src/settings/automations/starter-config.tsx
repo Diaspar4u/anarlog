@@ -34,6 +34,7 @@ import {
   parseAutomationRunRecord,
   parseAutomationTargetRef,
 } from "~/automations/engine";
+import { useMarkdownExportPolicy } from "~/automations/markdown-export-policy";
 import { env } from "~/env";
 import { listSlackChannels } from "~/session-sharing/delivery-client";
 import { setSettingValue, useStoredSettingValue } from "~/settings/queries";
@@ -88,7 +89,7 @@ export function AutomationLastRunLine({
   );
 }
 
-function IntegrationGate({
+export function IntegrationGate({
   integrationId,
   connectLabel,
   reconnectLabel,
@@ -148,7 +149,7 @@ function useSaveTarget(settingKey: TargetSettingKey) {
   });
 }
 
-function useAuthedApiClient() {
+export function useAuthedApiClient() {
   const auth = useAuth();
   const headers = auth.getHeaders();
   if (!headers) {
@@ -188,7 +189,8 @@ export function MarkdownExportConfig({
   const storedDirectory = (
     useStoredSettingValue("automation_markdown_export_directory").value ?? ""
   ).trim();
-  const directory = (value ?? storedDirectory).trim();
+  const policy = useMarkdownExportPolicy();
+  const directory = (value ?? policy.data?.directory ?? storedDirectory).trim();
   const chooseFolderMutation = useMutation({
     mutationKey: ["automation-markdown-export-folder"],
     mutationFn: async () => {

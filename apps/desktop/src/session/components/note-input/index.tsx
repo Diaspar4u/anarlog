@@ -26,11 +26,13 @@ import {
   unregisterCanonicalSessionEditor,
 } from "~/session-sharing/editor-activity";
 import { useCurrentNoteTab } from "~/session/components/shared";
+import { SharedNoteSummary } from "~/shared-notes";
 import { useScrollPreservation } from "~/shared/hooks/useScrollPreservation";
 import type { SessionMode } from "~/store/zustand/listener/general";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 import { type EditorView as TabEditorView } from "~/store/zustand/tabs/schema";
 import { useListener } from "~/stt/contexts";
+import { SavedCaptureAudioPrompt } from "~/stt/saved-capture-audio";
 
 export interface NoteInputHandle {
   focus: () => void;
@@ -175,8 +177,9 @@ const NoteInputContent = forwardRef<
       shouldShowTranscriptTabSpinner(sessionMode);
 
     const { scrollRef, onBeforeTabChange } = useScrollPreservation(
-      renderedCurrentTab.type === "enhanced"
-        ? `enhanced-${renderedCurrentTab.id}`
+      renderedCurrentTab.type === "enhanced" ||
+        renderedCurrentTab.type === "shared"
+        ? `${renderedCurrentTab.type}-${renderedCurrentTab.id}`
         : renderedCurrentTab.type,
     );
 
@@ -334,6 +337,7 @@ const NoteInputContent = forwardRef<
 
     return (
       <div className="-mx-2 flex h-full flex-col">
+        <SavedCaptureAudioPrompt sessionId={sessionId} />
         {!hideHeader && (
           <div className="relative px-2">
             <div className="flex items-center justify-between gap-1">
@@ -368,7 +372,7 @@ const NoteInputContent = forwardRef<
               "pt-2",
               renderedCurrentTab.type === "transcript"
                 ? "overflow-hidden pb-0"
-                : "overflow-x-hidden overflow-y-auto pb-6",
+                : "scroll-pb-20 overflow-x-hidden overflow-y-auto pb-24",
             ])}
           >
             {renderedCurrentTab.type === "enhanced" && (
@@ -395,6 +399,9 @@ const NoteInputContent = forwardRef<
                 onViewDisposed={handleSessionViewDisposed}
               />
             )}
+            {renderedCurrentTab.type === "shared" && (
+              <SharedNoteSummary shareId={renderedCurrentTab.id} />
+            )}
             {renderedCurrentTab.type === "transcript" && (
               <Transcript
                 sessionId={sessionId}
@@ -416,6 +423,9 @@ function isSameEditorView(left: TabEditorView, right: TabEditorView): boolean {
   }
 
   if (left.type === "enhanced" && right.type === "enhanced") {
+    return left.id === right.id;
+  }
+  if (left.type === "shared" && right.type === "shared") {
     return left.id === right.id;
   }
 

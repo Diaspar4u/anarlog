@@ -1,15 +1,21 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { isAbsolute, join, relative } from "node:path";
+import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
-import { setTimeout as delay } from "node:timers/promises";
 
 import {
   buildChangelogModule,
-  getPublishedDesktopVersions,
-  publishedChangelogs,
+  getPublishedDesktopReleases,
   renderChangelogModule,
 } from "./changelog-build.ts";
+import { getMobilePublication } from "./changelog-publication.ts";
+
+const desktopPublication = {
+  publishedAt: "2026-09-08T11:12:17Z",
+  channel: "stable" as const,
+  availability: [],
+};
 
 const published = {
   tag_name: "desktop_v1.4.23",
@@ -19,7 +25,7 @@ const published = {
 };
 
 test("accepts only actually published stable desktop releases", async () => {
-  const versions = await getPublishedDesktopVersions(async () =>
+  const versions = await getPublishedDesktopReleases(async () =>
     Response.json([
       published,
       { ...published, tag_name: "desktop_v1.4.24", draft: true },
@@ -32,12 +38,12 @@ test("accepts only actually published stable desktop releases", async () => {
       null,
     ]),
   );
-  assert.deepEqual([...versions], ["1.4.23"]);
+  assert.deepEqual([...versions.keys()], ["desktop/1.4.23"]);
 });
 
 test("includes older releases across pages without following arbitrary URLs", async () => {
   const urls: string[] = [];
-  const versions = await getPublishedDesktopVersions(async (url) => {
+  const versions = await getPublishedDesktopReleases(async (url) => {
     urls.push(String(url));
     return urls.length === 1
       ? Response.json([published], {
@@ -45,7 +51,7 @@ test("includes older releases across pages without following arbitrary URLs", as
         })
       : Response.json([{ ...published, tag_name: "desktop_v1.0.0" }]);
   });
-  assert.deepEqual([...versions], ["1.4.23", "1.0.0"]);
+  assert.deepEqual([...versions.keys()], ["desktop/1.4.23", "desktop/1.0.0"]);
   assert.deepEqual(
     urls,
     [1, 2].map(
@@ -57,7 +63,7 @@ test("includes older releases across pages without following arbitrary URLs", as
 
 test("uses build-only authentication on every page and rejects redirects", async () => {
   let requests = 0;
-  await getPublishedDesktopVersions(async (url, init) => {
+  await getPublishedDesktopReleases(async (url, init) => {
     requests++;
     assert.equal(new URL(url).origin, "https://api.github.com");
     assert.equal(
@@ -73,7 +79,7 @@ test("uses build-only authentication on every page and rejects redirects", async
     );
   }, "test-build-token");
   assert.equal(requests, 2);
-  await getPublishedDesktopVersions(async (_url, init) => {
+  await getPublishedDesktopReleases(async (_url, init) => {
     assert.equal(new Headers(init?.headers).has("Authorization"), false);
     return Response.json([published]);
   });
@@ -82,7 +88,7 @@ test("uses build-only authentication on every page and rejects redirects", async
 test("does not return a partial allowlist when a later page fails", async () => {
   let requests = 0;
   await assert.rejects(
-    getPublishedDesktopVersions(async () => {
+    getPublishedDesktopReleases(async () => {
       return ++requests === 1
         ? Response.json([published], {
             headers: { link: '<https://example.com>; rel="next"' },
@@ -95,19 +101,19 @@ test("does not return a partial allowlist when a later page fails", async () => 
 
 test("fails the build rather than exposing drafts when publication cannot be checked", async () => {
   await assert.rejects(
-    getPublishedDesktopVersions(
+    getPublishedDesktopReleases(
       async () => new Response(null, { status: 429 }),
     ),
     /429/,
   );
   await assert.rejects(
-    getPublishedDesktopVersions(async () =>
+    getPublishedDesktopReleases(async () =>
       Response.json({ message: "invalid" }),
     ),
     /Invalid/,
   );
   await assert.rejects(
-    getPublishedDesktopVersions(async () => {
+    getPublishedDesktopReleases(async () => {
       throw new Error("offline");
     }),
     /offline/,
@@ -116,24 +122,35 @@ test("fails the build rather than exposing drafts when publication cannot be che
 
 test("unreleased notes are absent from the website module, including its raw imports", () => {
   const files = [
-    "/content/1.4.23.md",
-    "/content/1.4.24.md",
+    "/content/desktop/1.4.23.md",
+    "/content/desktop/1.4.24.md",
     "/content/nightly.md",
     "/content/AGENTS.md",
   ];
-  const module = renderChangelogModule(files, new Set(["1.4.23"]));
+  const module = renderChangelogModule(
+    files,
+    new Map([["desktop/1.4.23", desktopPublication]]),
+  );
   assert.match(module, /1\.4\.23\.md\?raw/);
   assert.doesNotMatch(module, /1\.4\.24|nightly|AGENTS/);
-  assert.equal(renderChangelogModule(files, new Set()), "export default {};");
+  assert.equal(renderChangelogModule(files, new Map()), "export default {};");
   assert.match(
-    renderChangelogModule(files, new Set(["1.4.23", "1.4.24"])),
+    renderChangelogModule(
+      files,
+      new Map(
+        ["1.4.23", "1.4.24"].map((version) => [
+          `desktop/${version}`,
+          desktopPublication,
+        ]),
+      ),
+    ),
     /1\.4\.24\.md\?raw/,
   );
 });
 
 test("local development can preview stable drafts but never Nightly or instruction files", () => {
   const module = renderChangelogModule(
-    ["/content/1.4.24.md", "/content/nightly.md", "/content/AGENTS.md"],
+    ["/content/desktop/1.4.24.md", "/content/nightly.md", "/content/AGENTS.md"],
     null,
   );
   assert.match(module, /1\.4\.24\.md\?raw/);
@@ -142,74 +159,110 @@ test("local development can preview stable drafts but never Nightly or instructi
 
 test("normalizes Windows paths in both imports and entry keys", () => {
   const module = renderChangelogModule(
-    ["C:\\repo\\content\\1.4.23.md", "C:\\repo\\content\\1.4.24.md"],
-    new Set(["1.4.23"]),
+    [
+      "C:\\repo\\content\\desktop\\1.4.23.md",
+      "C:\\repo\\content\\desktop\\1.4.24.md",
+    ],
+    new Map([["desktop/1.4.23", desktopPublication]]),
   );
   assert.ok(
-    module.includes('import entry0 from "C:/repo/content/1.4.23.md?raw";'),
+    module.includes(
+      'import entry0 from "C:/repo/content/desktop/1.4.23.md?raw";',
+    ),
   );
-  assert.ok(module.includes('"C:/repo/content/1.4.23.md": entry0'));
+  assert.ok(
+    module.includes('"C:/repo/content/desktop/1.4.23.md": {raw: entry0'),
+  );
   assert.doesNotMatch(module, /1\.4\.24|\\/);
 });
 
-test(
-  "relative-directory dev preview discovers added and deleted notes without restarting",
-  { timeout: 15_000 },
-  async (t) => {
-    const directory = await mkdtemp(join(process.cwd(), ".changelog-hmr-"));
-    t.after(() => rm(directory, { recursive: true, force: true }));
-    await writeFile(join(directory, "1.4.23.md"), "Released note");
-    const inputDirectory = relative(process.cwd(), directory);
-    assert.ok(!isAbsolute(inputDirectory));
-    assert.equal(
-      await buildChangelogModule("serve", inputDirectory),
-      await buildChangelogModule("serve", directory),
-    );
-    const { createServer } = await import("vite");
-    const server = await createServer({
-      root: directory,
-      configFile: false,
-      publicDir: false,
-      plugins: [await publishedChangelogs("serve", inputDirectory)],
-      optimizeDeps: { noDiscovery: true, include: [] },
-      server: { host: "127.0.0.1", port: 0 },
-      logLevel: "silent",
-    });
-    t.after(() => server.close());
-    await server.listen();
-    const url = "virtual:published-changelogs";
-    assert.match((await server.transformRequest(url))!.code, /1\.4\.23/);
-    for (
-      let tries = 0;
-      !Object.values(server.watcher.getWatched()).some((files) =>
-        files.includes("1.4.23.md"),
+const mobileRecord = {
+  version: "1.4.23",
+  sourceSha: "a".repeat(40),
+  channel: "beta",
+  availability: [
+    {
+      platform: "ios",
+      destination: "testflight",
+      build: "42",
+      publishedAt: "2026-09-09T00:00:00Z",
+      evidenceUrl: "https://appstoreconnect.apple.com/apps/123/testflight",
+    },
+  ],
+};
+
+test("mobile publication requires verified availability for the matching version and channel", () => {
+  const publication = getMobilePublication(
+    JSON.stringify(mobileRecord),
+    "1.4.23",
+  );
+  assert.equal(publication.channel, "beta");
+  assert.deepEqual(publication.availability, [
+    { platform: "ios", destination: "testflight" },
+  ]);
+  for (const record of [
+    { ...mobileRecord, availability: [] },
+    { ...mobileRecord, sourceSha: "unknown" },
+    { ...mobileRecord, version: "1.4.24" },
+    { ...mobileRecord, channel: "stable" },
+    {
+      ...mobileRecord,
+      availability: [
+        mobileRecord.availability[0],
+        mobileRecord.availability[0],
+      ],
+    },
+    {
+      ...mobileRecord,
+      availability: [
+        {
+          ...mobileRecord.availability[0],
+          publishedAt: "2999-01-01T00:00:00Z",
+        },
+      ],
+    },
+    {
+      ...mobileRecord,
+      availability: [
+        { ...mobileRecord.availability[0], destination: "play-beta" },
+      ],
+    },
+  ])
+    assert.throws(() => getMobilePublication(JSON.stringify(record), "1.4.23"));
+});
+
+test("website builds publish streams independently and keep unavailable mobile notes out of bundles", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "anarlog-changelog-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  t.mock.method(globalThis, "fetch", async () => Response.json([published]));
+  for (const stream of ["desktop", "mobile"]) {
+    await mkdir(join(directory, stream));
+    for (const version of ["1.4.23", "1.4.24"]) {
+      await writeFile(
+        join(directory, stream, `${version}.md`),
+        `Notes for ${stream} ${version}`,
       );
-      tries++
-    ) {
-      assert.ok(tries < 250, "content directory is watched");
-      await delay(20);
     }
-    let reloads = 0;
-    t.mock.method(
-      server.environments.client.hot,
-      "send",
-      (payload: { type: string }) => {
-        if (payload.type === "full-reload") reloads++;
-      },
-    );
-    const draft = join(directory, "1.4.24.md");
-    await writeFile(draft, "Draft note");
-    for (let tries = 0; reloads < 1; tries++) {
-      assert.ok(tries < 250, "adding a note triggers reload");
-      await delay(20);
-    }
-    assert.match((await server.transformRequest(url))!.code, /1\.4\.24/);
-    const previousReloads = reloads;
-    await rm(draft);
-    for (let tries = 0; reloads === previousReloads; tries++) {
-      assert.ok(tries < 250, "deleting a note triggers reload");
-      await delay(20);
-    }
-    assert.doesNotMatch((await server.transformRequest(url))!.code, /1\.4\.24/);
-  },
-);
+  }
+  await writeFile(
+    join(directory, "mobile", "1.4.23.json"),
+    JSON.stringify(mobileRecord),
+  );
+  await writeFile(join(directory, "1.4.23.md"), "Legacy copy");
+  const module = await buildChangelogModule("build", directory);
+  assert.match(module, /desktop\/1\.4\.23\.md\?raw/);
+  assert.match(module, /mobile\/1\.4\.23\.md\?raw/);
+  assert.doesNotMatch(module, /1\.4\.24|sourceSha|evidenceUrl|Legacy/);
+  assert.match(module, /testflight/);
+  const preview = await buildChangelogModule("serve", directory);
+  assert.match(preview, /desktop\/1\.4\.24\.md\?raw/);
+  assert.match(preview, /mobile\/1\.4\.24\.md\?raw/);
+  await writeFile(
+    join(directory, "mobile", "1.4.24.json"),
+    JSON.stringify(mobileRecord),
+  );
+  await assert.rejects(
+    buildChangelogModule("build", directory),
+    /does not match/,
+  );
+});

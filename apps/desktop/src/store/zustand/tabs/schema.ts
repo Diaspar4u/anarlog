@@ -1,26 +1,31 @@
 import type {
   ChangelogState,
-  ContactsSelection,
   ContactsState,
   EditorView,
-  SessionsState,
+  SessionsState as WindowsSessionsState,
   TabInput as WindowsTabInput,
   TemplatesState,
 } from "@anlg/plugin-windows";
 
-export type {
-  ChangelogState,
-  ContactsSelection,
-  ContactsState,
-  EditorView,
-  SessionsState,
-  TemplatesState,
+export type { EditorView };
+
+export type SessionsState = WindowsSessionsState & {
+  scheduledAutoStart?: boolean | null;
 };
 
-export type SupportedWindowTabInput = Exclude<
+type WindowsSupportedWindowTabInput = Exclude<
   WindowsTabInput,
   { type: "extension" } | { type: "extensions" } | { type: "folders" }
 >;
+
+export type SupportedWindowTabInput =
+  | Exclude<WindowsSupportedWindowTabInput, { type: "sessions" }>
+  | (Omit<
+      Extract<WindowsSupportedWindowTabInput, { type: "sessions" }>,
+      "state"
+    > & {
+      state?: SessionsState | null;
+    });
 
 export type TabInput =
   | SupportedWindowTabInput
@@ -42,6 +47,7 @@ export const isTabInputSupported = (
 export type SettingsTab =
   | "account"
   | "billing"
+  | "referrals"
   | "stats"
   | "insights"
   | "app"
@@ -52,6 +58,7 @@ export type SettingsTab =
   | "team"
   | "notifications"
   | "imports"
+  | "crm"
   | "developers"
   | "privacy"
   | "permissions"
@@ -66,6 +73,7 @@ const normalizeSettingsTab = (
 ): Exclude<SettingsTab, "account"> => {
   switch (tab) {
     case "billing":
+    case "referrals":
     case "stats":
     case "insights":
     case "app":
@@ -75,6 +83,7 @@ const normalizeSettingsTab = (
     case "team":
     case "notifications":
     case "imports":
+    case "crm":
     case "developers":
     case "privacy":
     case "permissions":
@@ -96,11 +105,11 @@ const normalizeSettingsTab = (
   }
 };
 
-export type SettingsState = {
+type SettingsState = {
   tab: SettingsTab | null;
 };
 
-export type DailySummaryState = {
+type DailySummaryState = {
   activeTab: "timeline" | "raw" | null;
 };
 
@@ -168,7 +177,16 @@ export const getDefaultState = (tab: TabInput): Tab => {
         ...base,
         type: "sessions",
         id: tab.id,
-        state: tab.state ?? { view: null, autoStart: null },
+        state: tab.state
+          ? {
+              ...tab.state,
+              scheduledAutoStart: tab.state.scheduledAutoStart ?? null,
+            }
+          : {
+              view: null,
+              autoStart: null,
+              scheduledAutoStart: null,
+            },
       };
     case "shared_sessions":
       return { ...base, type: "shared_sessions", id: tab.id };

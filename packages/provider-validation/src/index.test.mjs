@@ -401,14 +401,14 @@ test("Nari verifies keys using its non-billable authenticated voice catalog", as
     async (url, init) => {
       requests.push({ url, init });
       return requests.length === 1
-        ? Response.json({ object: "list", model: "qwen3-tts:free", data: [] })
+        ? Response.json({ object: "list", model: "qwen3-tts", data: [] })
         : new Response(null, { status: 401 });
     },
   );
   assert.equal(requests.length, 2);
   assert.equal(
     requests[0].url,
-    "https://api.narilabs.com/v1/voices?model=qwen3-tts:free",
+    "https://api.narilabs.com/v1/voices?model=qwen3-tts",
   );
   assert.equal(requests[0].init.headers.Authorization, "Bearer synthetic-key");
   assert.equal(
@@ -480,3 +480,39 @@ for (const data of [{ accessPermitted: false }, [], {}]) {
     );
   });
 }
+
+test("native streaming providers validate input without requiring a model catalog", async () => {
+  const fetcher = async () => {
+    throw new Error("No documented credential probe");
+  };
+  for (const provider of [
+    "inworld",
+    "gradium",
+    "amazon_bedrock",
+    "modulate",
+    "alebex",
+    "nvidia",
+  ]) {
+    await verifyProviderCredentials(
+      { ...credential, type: "stt", provider },
+      fetcher,
+    );
+  }
+  await verifyProviderCredentials(
+    {
+      ...credential,
+      type: "stt",
+      provider: "nvidia",
+      baseUrl: "http://localhost:9000",
+      apiKey: "",
+    },
+    fetcher,
+  );
+  await assert.rejects(
+    verifyProviderCredentials(
+      { ...credential, type: "stt", provider: "inworld", apiKey: "" },
+      fetcher,
+    ),
+    /valid API key/,
+  );
+});

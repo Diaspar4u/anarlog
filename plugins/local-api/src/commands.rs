@@ -1,6 +1,9 @@
 use tauri::Manager;
 
-use crate::{CreatedWebhook, MarkdownExportOptions, WebhookDelivery, WebhookInfo, dispatch};
+use crate::{
+    CreatedWebhook, MarkdownExportOptions, MarkdownExportPolicy, WebhookDelivery, WebhookInfo,
+    dispatch, markdown_policy,
+};
 
 const MAX_CLOUD_SNAPSHOT_BYTES: usize = 2 * 1024 * 1024;
 static MARKDOWN_EXPORT_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -92,7 +95,11 @@ pub async fn dispatch_event<R: tauri::Runtime>(
     }
     let pool = pool(&app)?;
     if event == dispatch::EVENT_NOTE_ENHANCED {
-        run_markdown_export_automation(&pool, &meeting_id).await;
+        if let Err(error) =
+            export_meeting_markdown_automatically(app.clone(), meeting_id.clone()).await
+        {
+            tracing::warn!("[local-api] Markdown summary export failed: {error}");
+        }
     }
     let targeted = dispatch::dispatch_event(&pool, &event, &meeting_id).await?;
     Ok(targeted as u32)
@@ -102,23 +109,47 @@ pub async fn dispatch_event<R: tauri::Runtime>(
 // auto-enhance has generated the summary. The note.enhanced dispatch is the
 // signal that the summary is persisted, so re-export here to rewrite the file
 // with the summary included.
-pub(crate) async fn run_markdown_export_automation(pool: &sqlx::SqlitePool, meeting_id: &str) {
-    let enabled = load_setting(pool, "automation_markdown_export_enabled")
+fn configured_vault<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<std::path::PathBuf> {
+    let base = anlg_storage::global::compute_default_base(&app.config().identifier)?;
+    anlg_storage::vault::recorded_vault_path(&base, &base)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn markdown_export_policy<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<MarkdownExportPolicy, String> {
+    markdown_policy::load(&pool(&app)?, configured_vault(&app).as_deref()).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn export_meeting_markdown_automatically<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    meeting_id: String,
+) -> Result<Option<String>, String> {
+    run_markdown_export_automation(&pool(&app)?, &meeting_id, configured_vault(&app).as_deref())
         .await
-        .and_then(|value| value.as_bool())
-        .unwrap_or(false);
-    let directory = load_setting(pool, "automation_markdown_export_directory")
-        .await
-        .and_then(|value| value.as_str().map(|value| value.trim().to_string()))
-        .unwrap_or_default();
-    if !enabled || directory.is_empty() {
-        return;
-    }
+}
+
+pub(crate) async fn run_markdown_export_automation(
+    pool: &sqlx::SqlitePool,
+    meeting_id: &str,
+    configured_vault: Option<&std::path::Path>,
+) -> Result<Option<String>, String> {
+    let policy = markdown_policy::load(pool, configured_vault).await?;
+    let Some(directory) = policy.directory.filter(|_| policy.enabled) else {
+        return Ok(None);
+    };
 
     let result = match anlg_agent_access::get_meeting_export(pool, meeting_id.to_string()).await {
         Ok(export) => write_markdown_export(std::path::Path::new(&directory), &export),
         Err(error) => Err(error.to_string()),
     };
+    let outcome = result
+        .as_ref()
+        .map(|path| Some(path.to_string_lossy().into_owned()))
+        .map_err(Clone::clone);
     let (status, detail) = match result {
         Ok(path) => ("success", path.to_string_lossy().into_owned()),
         Err(error) => {
@@ -145,24 +176,11 @@ pub(crate) async fn run_markdown_export_automation(pool: &sqlx::SqlitePool, meet
     .execute(pool)
     .await
     {
-        tracing::warn!("[local-api] could not record the markdown export run: {error}");
+        return Err(format!(
+            "could not record the Markdown export result: {error}"
+        ));
     }
-}
-
-async fn load_setting(pool: &sqlx::SqlitePool, id: &str) -> Option<serde_json::Value> {
-    let raw: Option<String> =
-        match sqlx::query_scalar("SELECT value_json FROM app_settings WHERE id = ?")
-            .bind(id)
-            .fetch_optional(pool)
-            .await
-        {
-            Ok(value) => value,
-            Err(error) => {
-                tracing::warn!("[local-api] could not load setting '{id}': {error}");
-                None
-            }
-        };
-    raw.and_then(|value| serde_json::from_str(&value).ok())
+    outcome
 }
 
 #[tauri::command]
@@ -502,6 +520,7 @@ pub async fn list_cloud_snapshot_ids<R: tauri::Runtime>(
             anlg_agent_access::ListMeetingsInput {
                 query: None,
                 series_id: None,
+                folder_path: None,
                 limit: Some(anlg_agent_access::MAX_LIST_LIMIT),
                 offset: Some(offset),
             },
@@ -515,4 +534,44 @@ pub async fn list_cloud_snapshot_ids<R: tauri::Runtime>(
         offset = next_offset;
     }
     Ok(ids)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn prepare_drive_markdown<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    meeting_id: String,
+) -> Result<crate::types::DriveMarkdownExport, String> {
+    let export = anlg_agent_access::get_meeting_export(&pool(&app)?, meeting_id)
+        .await
+        .map_err(|error| error.to_string())?;
+    drive_markdown(export)
+}
+
+pub(crate) fn drive_markdown(
+    mut export: anlg_agent_access::MeetingExport,
+) -> Result<crate::types::DriveMarkdownExport, String> {
+    if !export
+        .meeting
+        .summaries
+        .iter()
+        .any(|summary| !summary.markdown.trim().is_empty())
+    {
+        return Err("No meeting summary is available yet".to_string());
+    }
+    export.meeting.note = None;
+    export.meeting.action_items.clear();
+    let filename = configured_markdown_filename(
+        &export.meeting,
+        &MarkdownExportOptions {
+            include_id_suffix: false,
+            ..Default::default()
+        },
+    );
+    let mut markdown = export.to_markdown();
+    if markdown == export.meeting.to_markdown() {
+        markdown.push_str("\n\n## Transcript\n\nNo transcript is available for this note.");
+    }
+    markdown.push('\n');
+    Ok(crate::types::DriveMarkdownExport { filename, markdown })
 }

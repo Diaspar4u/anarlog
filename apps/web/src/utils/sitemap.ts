@@ -18,7 +18,7 @@ function getArticleSlugs(): string[] {
   }
 }
 
-export function getSitemap(): Sitemap<TRoutes | "/security/"> {
+export function getSitemap(): Sitemap<TRoutes | "/security/" | "/about/"> {
   const slugs = getArticleSlugs();
 
   return {
@@ -30,9 +30,17 @@ export function getSitemap(): Sitemap<TRoutes | "/security/"> {
         priority: 1.0,
         changeFrequency: "monthly",
       },
+      "/about/": {
+        priority: 0.8,
+        changeFrequency: "monthly",
+      },
       "/blog/": {
         priority: 0.8,
         changeFrequency: "weekly",
+      },
+      "/guides/transcription/": {
+        priority: 0.8,
+        changeFrequency: "monthly",
       },
       "/changelog/": {
         priority: 0.7,
@@ -58,9 +66,10 @@ export function getSitemap(): Sitemap<TRoutes | "/security/"> {
         priority: 0.7,
         changeFrequency: "monthly",
       },
-      // Per-version release notes are noindex (see routes/changelog/$version),
+      // Per-version release notes are noindex (see routes/changelog/$stream.$version),
       // so listing them here would contradict the directive.
       "/changelog/$version": [],
+      "/changelog/$stream/$version": [],
       "/blog/$slug": slugs.map((slug) => ({
         path: `/blog/${slug}/`,
         priority: 0.6,

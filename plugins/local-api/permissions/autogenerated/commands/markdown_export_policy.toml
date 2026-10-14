@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-markdown-export-policy"
+description = "Enables the markdown_export_policy command without any pre-configured scope."
+commands.allow = ["markdown_export_policy"]
+
+[[permission]]
+identifier = "deny-markdown-export-policy"
+description = "Denies the markdown_export_policy command without any pre-configured scope."
+commands.deny = ["markdown_export_policy"]

@@ -10,23 +10,24 @@ import { cn } from "@anlg/utils";
 
 export function PricingSection({
   compareLink = false,
+  headingLevel: Heading = "h2",
 }: {
   compareLink?: boolean;
+  headingLevel?: "h1" | "h2";
 }) {
   return (
     <section id="pricing" className="pt-24 pb-8 md:pt-28 md:pb-10">
       <div>
-        <h2 className="font-hand text-3xl leading-none font-semibold text-[#756b5d]">
+        <Heading className="font-hand text-3xl leading-none font-semibold text-[#756b5d]">
           Simple pricing
-        </h2>
+        </Heading>
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-[#4f4940]">
-          Start local for free, add dictation and personal cloud features with
-          Pro, put collaboration on Team, and reserve organization-wide controls
-          for Enterprise.
+          Start local for free, add cloud features and collaboration with Pro,
+          and get organization-wide controls with Enterprise.
         </p>
       </div>
 
-      <div className="relative left-1/2 mt-8 grid w-screen max-w-[1380px] -translate-x-1/2 grid-cols-1 gap-4 px-5 text-left md:grid-cols-2 md:px-8 lg:grid-cols-4">
+      <div className="relative left-1/2 mt-8 grid w-screen max-w-[1380px] -translate-x-1/2 grid-cols-1 gap-4 px-5 text-left md:grid-cols-2 md:px-8 lg:grid-cols-3">
         {MARKETING_PLAN_TIERS.map((plan) => (
           <PricingCard key={plan.id} plan={plan} />
         ))}
@@ -141,9 +142,7 @@ function getPlanActionLabel(plan: MarketingPlanData) {
     case "free":
       return "Download for free";
     case "pro":
-      return "Start your 3-week Pro trial";
-    case "team":
-      return "Create a Team workspace";
+      return "Start your 2-week Pro trial";
     case "enterprise":
       return "Talk to sales";
   }

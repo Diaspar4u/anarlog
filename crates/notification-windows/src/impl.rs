@@ -10,10 +10,10 @@ use windows::Win32::Graphics::Dwm::{
 };
 use windows::Win32::Graphics::Gdi::{
     BeginPaint, CLEARTYPE_QUALITY, CLIP_DEFAULT_PRECIS, CreateFontW, CreateSolidBrush,
-    DEFAULT_CHARSET, DEFAULT_PITCH, DRAW_TEXT_FORMAT, DT_END_ELLIPSIS, DT_LEFT, DT_SINGLELINE,
-    DT_TOP, DT_VCENTER, DT_WORDBREAK, DeleteObject, DrawTextW, EndPaint, FW_NORMAL, FW_SEMIBOLD,
-    FillRect, HDC, HFONT, InvalidateRect, OUT_DEFAULT_PRECIS, PAINTSTRUCT, SelectObject, SetBkMode,
-    SetTextColor, TRANSPARENT,
+    DEFAULT_CHARSET, DEFAULT_PITCH, DRAW_TEXT_FORMAT, DT_CENTER, DT_END_ELLIPSIS, DT_LEFT,
+    DT_SINGLELINE, DT_TOP, DT_VCENTER, DT_WORDBREAK, DeleteObject, DrawTextW, EndPaint, FW_NORMAL,
+    FW_SEMIBOLD, FillRect, HDC, HFONT, InvalidateRect, OUT_DEFAULT_PRECIS, PAINTSTRUCT,
+    SelectObject, SetBkMode, SetTextColor, TRANSPARENT,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::Threading::GetCurrentThreadId;
@@ -39,7 +39,7 @@ use anlg_notification_interface::{
 
 use crate::callbacks;
 use crate::icon::{destroy_icon, header_title, load_notification_icon};
-use crate::layout::{HitTarget, MAX_NOTIFICATIONS, NotificationLayout, stacked_origin};
+use crate::layout::{HitTarget, MAX_NOTIFICATIONS, NotificationLayout, Rect, stacked_origin};
 
 const CLASS_NAME: windows::core::PCWSTR = w!("AnarlogNotification");
 const TIMER_ID: usize = 1;
@@ -292,10 +292,14 @@ impl NotificationManager {
         let Some(instance) = self.instance_by_hwnd_mut(hwnd) else {
             return;
         };
-        let PrimaryAction::Options(options) = instance.payload.primary_action() else {
-            return;
+        let semantic_menu = instance.payload.action_menu.clone();
+        let options = match instance.payload.primary_action() {
+            PrimaryAction::Options(options) => options.to_vec(),
+            PrimaryAction::Accept { .. } if semantic_menu.is_some() => {
+                vec![semantic_menu.as_ref().unwrap().label.clone()]
+            }
+            PrimaryAction::Accept { .. } => return,
         };
-        let options = options.to_vec();
         let key = instance.key.clone();
         let menu = unsafe { CreatePopupMenu().ok() };
         let Some(menu) = menu else {
@@ -307,14 +311,16 @@ impl NotificationManager {
                 let _ = AppendMenuW(menu, MF_STRING, index + 1, PCWSTR(text.as_mut_ptr()));
             }
         }
-        let mut create_new = wide("Create New Note...");
-        unsafe {
-            let _ = AppendMenuW(
-                menu,
-                MF_STRING,
-                options.len() + 1,
-                PCWSTR(create_new.as_mut_ptr()),
-            );
+        if semantic_menu.is_none() {
+            let mut create_new = wide("Create New Note...");
+            unsafe {
+                let _ = AppendMenuW(
+                    menu,
+                    MF_STRING,
+                    options.len() + 1,
+                    PCWSTR(create_new.as_mut_ptr()),
+                );
+            }
         }
         let mut cursor = POINT::default();
         unsafe {
@@ -610,6 +616,20 @@ fn draw_notification(hdc: HDC, instance: &NotificationInstance) {
                 },
             );
             draw_label(hdc, action, label, DT_VCENTER | DT_SINGLELINE);
+            if instance.payload.has_action_menu() && !instance.is_expanded {
+                SetTextColor(hdc, rgb(26, 26, 26));
+                draw_label(
+                    hdc,
+                    Rect {
+                        x: action.right() - 28,
+                        y: action.y,
+                        width: 28,
+                        height: action.height,
+                    },
+                    "▾",
+                    DT_VCENTER | DT_SINGLELINE | DT_CENTER,
+                );
+            }
         }
 
         if let Some(collapse) = instance.layout.collapse {

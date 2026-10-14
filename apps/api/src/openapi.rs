@@ -47,6 +47,7 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
     let notion_doc = with_path_prefix(anlg_api_notion::openapi(), "/notion");
     let ticket_doc = with_path_prefix(anlg_api_ticket::openapi(), "/ticket");
     let zoom_doc = with_path_prefix(anlg_api_zoom::openapi(), "/zoom");
+    let crm_doc = with_path_prefix(anlg_api_crm::openapi(), "/crm");
     let meeting_import_doc = anlg_api_meeting_import::openapi();
     let nango_doc = with_path_prefix(anlg_api_nango::openapi(), "/nango");
     let subscription_doc = with_path_prefix(anlg_api_subscription::openapi(), "/subscription");
@@ -64,6 +65,7 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
     doc.merge(notion_doc);
     doc.merge(ticket_doc);
     doc.merge(zoom_doc);
+    doc.merge(crm_doc);
     doc.merge(meeting_import_doc);
     doc.merge(nango_doc);
     doc.merge(subscription_doc);
@@ -301,18 +303,10 @@ mod tests {
     }
 
     #[test]
-    fn zoom_import_path_is_prefixed_and_protected() {
-        let doc = super::openapi();
-        assert_bearer(
-            doc.paths.paths.get("/zoom/import-meetings").unwrap(),
-            "post",
-        );
-    }
-
-    #[test]
-    fn nango_meeting_import_paths_are_protected() {
+    fn meeting_import_paths_are_protected() {
         let doc = super::openapi();
         for path in [
+            "/zoom/import-meetings",
             "/fathom/import-meetings",
             "/webex/import-meetings",
             "/google-meet/import-meetings",

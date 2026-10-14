@@ -1,5 +1,6 @@
 import { getIdentifier } from "@tauri-apps/api/app";
 
+import { beginDesktopAuth } from "~/auth/deeplink";
 import { env } from "~/env";
 
 // export * from "../shared/config/configure-pro-settings";
@@ -31,6 +32,7 @@ export const getScheme = async (): Promise<DesktopScheme> => {
 };
 
 type DesktopFlowPath =
+  | "/app/google-drive-picker"
   | "/auth"
   | "/app/account"
   | "/app/integration"
@@ -47,10 +49,23 @@ export const buildWebAppUrl = async (
   const url = new URL(path, env.VITE_APP_URL);
   url.searchParams.set("flow", "desktop");
   url.searchParams.set("scheme", scheme);
+  if (
+    import.meta.env.DEV &&
+    scheme === "anarlog-dev" &&
+    (path === "/app/integration" || path === "/app/google-drive-picker")
+  ) {
+    const { commands } = await import("@anlg/plugin-deeplink2");
+    const callback = await commands.startCallbackServer(scheme, null);
+    if (callback.status === "error") throw new Error(callback.error);
+    url.searchParams.set("callback_port", String(callback.data));
+  }
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       url.searchParams.set(key, value);
     }
+  }
+  if (path === "/auth") {
+    url.searchParams.set("desktop_state", beginDesktopAuth());
   }
   return url.toString();
 };

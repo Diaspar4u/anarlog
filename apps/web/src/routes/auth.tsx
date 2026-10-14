@@ -12,6 +12,7 @@ import {
   authPrimaryButtonClassName,
   authSecondaryButtonClassName,
 } from "@/components/auth-shell";
+import { isTurnstileEnabled, Turnstile } from "@/components/turnstile";
 import {
   createDesktopSession,
   doAuth,
@@ -37,16 +38,15 @@ import {
   buildPostAuthDestination,
   sanitizeInternalReturnPath,
 } from "@/lib/auth-redirect";
+import { storeDesktopAuthHandoff } from "@/lib/auth-route-privacy";
 import {
   buildDesktopAuthCallbackPath,
   resolveDesktopAuthCallbackMethod,
 } from "@/lib/desktop-auth-handoff";
-import {
-  capturePrivateRouteEvent,
-  identifyPrivateRouteUser,
-} from "@/lib/private-route-analytics";
+import { capturePrivateRouteEvent } from "@/lib/private-route-analytics";
 
 export const Route = createFileRoute("/auth")({
+  ssr: false,
   validateSearch: authSearchSchema,
   component: Component,
   head: () => ({
@@ -69,14 +69,20 @@ export const Route = createFileRoute("/auth")({
         const result = await createDesktopSession();
 
         if (result) {
+          storeDesktopAuthHandoff(
+            result.access_token,
+            result.refresh_token,
+            Date.now(),
+            search.desktop_state,
+          );
           throw redirect({
             to: "/callback/auth/",
             search: {
               flow: "desktop",
+              handoff: "stored",
               scheme: search.scheme ?? DEFAULT_DESKTOP_SCHEME,
-              access_token: result.access_token,
-              refresh_token: result.refresh_token,
               method: search.provider ?? search.view,
+              desktop_state: search.desktop_state,
             },
           });
         }
@@ -107,6 +113,7 @@ function Component() {
   const {
     flow,
     scheme,
+    desktop_state,
     redirect,
     provider,
     view: initialView,
@@ -114,6 +121,14 @@ function Component() {
   const { existingUser, lastSignInMethod } = Route.useRouteContext();
   const [view, setView] = useState<AuthView>(initialView ?? "main");
   const autoStartOAuth = flow === "desktop" && provider !== undefined;
+
+  useMountEffect(() => {
+    capturePrivateRouteEvent("auth_page_viewed", {
+      flow,
+      provider,
+      view: initialView ?? "main",
+    });
+  });
 
   if (existingUser && flow === "desktop") {
     return (
@@ -124,6 +139,7 @@ function Component() {
         <DesktopReauthView
           email={existingUser.email}
           scheme={scheme ?? DEFAULT_DESKTOP_SCHEME}
+          desktop_state={desktop_state}
           callbackMethod={resolveDesktopAuthCallbackMethod(
             provider ?? initialView,
             lastSignInMethod,
@@ -149,6 +165,7 @@ function Component() {
               <OAuthButton
                 flow={flow}
                 scheme={scheme}
+                desktop_state={desktop_state}
                 redirect={redirect}
                 provider="apple"
                 autoStart={autoStartOAuth}
@@ -159,6 +176,7 @@ function Component() {
               <OAuthButton
                 flow={flow}
                 scheme={scheme}
+                desktop_state={desktop_state}
                 redirect={redirect}
                 provider="google"
                 autoStart={autoStartOAuth}
@@ -169,6 +187,7 @@ function Component() {
               <OAuthButton
                 flow={flow}
                 scheme={scheme}
+                desktop_state={desktop_state}
                 redirect={redirect}
                 provider="azure"
                 autoStart={autoStartOAuth}
@@ -179,6 +198,7 @@ function Component() {
               <OAuthButton
                 flow={flow}
                 scheme={scheme}
+                desktop_state={desktop_state}
                 redirect={redirect}
                 provider="github"
                 autoStart={autoStartOAuth}
@@ -225,6 +245,7 @@ function Component() {
         <EmailAuthView
           flow={flow}
           scheme={scheme}
+          desktop_state={desktop_state}
           redirect={redirect}
           onBack={() => setView("main")}
         />
@@ -233,6 +254,7 @@ function Component() {
         <SsoAuthView
           flow={flow}
           scheme={scheme}
+          desktop_state={desktop_state}
           redirect={redirect}
           onBack={() => setView("main")}
         />
@@ -244,11 +266,13 @@ function Component() {
 function DesktopReauthView({
   email,
   scheme,
+  desktop_state,
   callbackMethod,
   lastSignInMethod,
 }: {
   email: string;
   scheme: DesktopScheme;
+  desktop_state?: string;
   callbackMethod: AuthSignInMethod | undefined;
   lastSignInMethod: AuthSignInMethod | null;
 }) {
@@ -267,6 +291,7 @@ function DesktopReauthView({
           result.refresh_token,
           scheme,
           callbackMethod,
+          desktop_state,
         );
       }
     },
@@ -309,28 +334,36 @@ function DesktopReauthView({
             <OAuthButton
               flow="desktop"
               scheme={scheme}
+              desktop_state={desktop_state}
               provider="apple"
               isLastUsed={lastSignInMethod === "apple"}
             />
             <OAuthButton
               flow="desktop"
               scheme={scheme}
+              desktop_state={desktop_state}
               provider="google"
               isLastUsed={lastSignInMethod === "google"}
             />
             <OAuthButton
               flow="desktop"
               scheme={scheme}
+              desktop_state={desktop_state}
               provider="azure"
               isLastUsed={lastSignInMethod === "azure"}
             />
             <OAuthButton
               flow="desktop"
               scheme={scheme}
+              desktop_state={desktop_state}
               provider="github"
               isLastUsed={lastSignInMethod === "github"}
             />
-            <SsoAuthView flow="desktop" scheme={scheme} />
+            <SsoAuthView
+              flow="desktop"
+              scheme={scheme}
+              desktop_state={desktop_state}
+            />
           </div>
         </>
       )}
@@ -365,11 +398,13 @@ type EmailMode = "password" | "magic-link";
 function EmailAuthView({
   flow,
   scheme,
+  desktop_state,
   redirect,
   onBack,
 }: {
   flow: "desktop" | "web";
   scheme?: DesktopScheme;
+  desktop_state?: string;
   redirect?: string;
   onBack: () => void;
 }) {
@@ -411,10 +446,20 @@ function EmailAuthView({
       </div>
 
       {mode === "password" && (
-        <PasswordForm flow={flow} scheme={scheme} redirect={redirect} />
+        <PasswordForm
+          flow={flow}
+          scheme={scheme}
+          desktop_state={desktop_state}
+          redirect={redirect}
+        />
       )}
       {mode === "magic-link" && (
-        <MagicLinkForm flow={flow} scheme={scheme} redirect={redirect} />
+        <MagicLinkForm
+          flow={flow}
+          scheme={scheme}
+          desktop_state={desktop_state}
+          redirect={redirect}
+        />
       )}
 
       <LegalText />
@@ -425,11 +470,13 @@ function EmailAuthView({
 function SsoAuthView({
   flow,
   scheme,
+  desktop_state,
   redirect,
   onBack,
 }: {
   flow: "desktop" | "web";
   scheme?: DesktopScheme;
+  desktop_state?: string;
   redirect?: string;
   onBack?: () => void;
 }) {
@@ -445,6 +492,7 @@ function SsoAuthView({
           domain,
           flow,
           scheme,
+          desktop_state,
           redirect,
         },
       });
@@ -516,10 +564,12 @@ function SsoAuthView({
 function PasswordForm({
   flow,
   scheme,
+  desktop_state,
   redirect,
 }: {
   flow: "desktop" | "web";
   scheme?: DesktopScheme;
+  desktop_state?: string;
   redirect?: string;
 }) {
   const [name, setName] = useState("");
@@ -529,16 +579,26 @@ function PasswordForm({
   const [isSignUp, setIsSignUp] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string>();
+  const [captchaWidgetKey, setCaptchaWidgetKey] = useState(0);
 
   const signInMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: (captchaToken: string | undefined) => {
       capturePrivateRouteEvent("auth_started", {
         method: "password",
         action: "sign_in",
         flow,
       });
       return doPasswordSignIn({
-        data: { email, password, flow, scheme, redirect },
+        data: {
+          email,
+          password,
+          flow,
+          scheme,
+          desktop_state,
+          redirect,
+          ...(captchaToken ? { captchaToken } : {}),
+        },
       });
     },
     onSuccess: (result) => {
@@ -560,17 +620,19 @@ function PasswordForm({
         result.success &&
         "access_token" in result
       ) {
-        identifyPrivateRouteUser(
-          "userId" in result
-            ? (result.userId as string | undefined)
-            : undefined,
-          { method: "password", action: "sign_in", flow },
-        );
+        capturePrivateRouteEvent("auth_completed", {
+          method: "password",
+          action: "sign_in",
+          flow,
+          new_account:
+            "createdAccount" in result && result.createdAccount === true,
+        });
         handlePasswordSuccess(
           result.access_token as string,
           result.refresh_token as string,
           flow,
           scheme,
+          desktop_state,
           redirect,
           false,
         );
@@ -587,14 +649,23 @@ function PasswordForm({
   });
 
   const signUpMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: (captchaToken: string | undefined) => {
       capturePrivateRouteEvent("auth_started", {
         method: "password",
         action: "sign_up",
         flow,
       });
       return doPasswordSignUp({
-        data: { name, email, password, flow, scheme, redirect },
+        data: {
+          name,
+          email,
+          password,
+          flow,
+          scheme,
+          desktop_state,
+          redirect,
+          ...(captchaToken ? { captchaToken } : {}),
+        },
       });
     },
     onSuccess: (result) => {
@@ -611,22 +682,29 @@ function PasswordForm({
         return;
       }
       if (result && "success" in result && result.success) {
-        identifyPrivateRouteUser(
-          "userId" in result
-            ? (result.userId as string | undefined)
-            : undefined,
-          { method: "password", action: "sign_up", flow },
-        );
         if ("needsConfirmation" in result && result.needsConfirmation) {
+          capturePrivateRouteEvent("auth_confirmation_sent", {
+            method: "password",
+            action: "sign_up",
+            flow,
+          });
           setSubmitted(true);
           return;
         }
         if ("access_token" in result) {
+          capturePrivateRouteEvent("auth_completed", {
+            method: "password",
+            action: "sign_up",
+            flow,
+            new_account:
+              "createdAccount" in result && result.createdAccount === true,
+          });
           handlePasswordSuccess(
             result.access_token as string,
             result.refresh_token as string,
             flow,
             scheme,
+            desktop_state,
             redirect,
             "newAccount" in result && result.newAccount,
           );
@@ -670,9 +748,16 @@ function PasswordForm({
         setErrorMessage("Password must be at least 6 characters");
         return;
       }
-      signUpMutation.mutate();
+    }
+
+    const submittedCaptchaToken = captchaToken;
+    setCaptchaToken(undefined);
+    setCaptchaWidgetKey((key) => key + 1);
+
+    if (isSignUp) {
+      signUpMutation.mutate(submittedCaptchaToken);
     } else {
-      signInMutation.mutate();
+      signInMutation.mutate(submittedCaptchaToken);
     }
   };
 
@@ -726,6 +811,7 @@ function PasswordForm({
           className={authInputClassName}
         />
       )}
+      <Turnstile key={captchaWidgetKey} onToken={setCaptchaToken} />
       {errorMessage && (
         <p className="text-center text-sm text-red-700">{errorMessage}</p>
       )}
@@ -735,7 +821,8 @@ function PasswordForm({
           isPending ||
           !email ||
           !password ||
-          (isSignUp && (!name.trim() || !confirmPassword))
+          (isSignUp && (!name.trim() || !confirmPassword)) ||
+          (isTurnstileEnabled && !captchaToken)
         }
         className={authPrimaryButtonClassName}
       >
@@ -759,7 +846,7 @@ function PasswordForm({
         {!isSignUp && (
           <Link
             to="/reset-password/"
-            search={toAuthFlowSearch({ flow, scheme, redirect })}
+            search={toAuthFlowSearch({ flow, scheme, desktop_state, redirect })}
             className="text-sm text-[#756b5d] transition-colors hover:text-[#181613] hover:underline"
           >
             Forgot password?
@@ -775,6 +862,7 @@ function handlePasswordSuccess(
   refreshToken: string,
   flow: "desktop" | "web",
   scheme?: DesktopScheme,
+  desktop_state?: string,
   redirectPath?: string,
   newAccount = false,
 ) {
@@ -784,6 +872,7 @@ function handlePasswordSuccess(
       refreshToken,
       scheme,
       "email",
+      desktop_state,
     );
   } else {
     window.location.href = buildPostAuthDestination({
@@ -796,17 +885,28 @@ function handlePasswordSuccess(
 function MagicLinkForm({
   flow,
   scheme,
+  desktop_state,
   redirect,
 }: {
   flow: "desktop" | "web";
   scheme?: DesktopScheme;
+  desktop_state?: string;
   redirect?: string;
 }) {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string>();
+  const [captchaWidgetKey, setCaptchaWidgetKey] = useState(0);
 
   const magicLinkMutation = useMutation({
-    mutationFn: (email: string) => {
+    mutationFn: ({
+      email,
+      captchaToken,
+    }: {
+      email: string;
+      captchaToken?: string;
+    }) => {
       capturePrivateRouteEvent("auth_started", {
         method: "magic_link",
         flow,
@@ -816,7 +916,9 @@ function MagicLinkForm({
           email,
           flow,
           scheme,
+          desktop_state,
           redirect,
+          ...(captchaToken ? { captchaToken } : {}),
         },
       });
     },
@@ -829,6 +931,14 @@ function MagicLinkForm({
           flow,
           failure_stage: "provider",
         });
+        setErrorMessage(
+          result &&
+            "message" in result &&
+            typeof result.message === "string" &&
+            result.message.trim()
+            ? result.message
+            : "Failed to send magic link. Please try again.",
+        );
       }
     },
     onError: () => {
@@ -837,6 +947,7 @@ function MagicLinkForm({
         flow,
         failure_stage: "request",
       });
+      setErrorMessage("Failed to send magic link. Please try again.");
     },
   });
 
@@ -856,7 +967,16 @@ function MagicLinkForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (email) {
-          magicLinkMutation.mutate(email);
+          setErrorMessage("");
+          const submittedCaptchaToken = captchaToken;
+          setCaptchaToken(undefined);
+          setCaptchaWidgetKey((key) => key + 1);
+          magicLinkMutation.mutate({
+            email,
+            ...(submittedCaptchaToken
+              ? { captchaToken: submittedCaptchaToken }
+              : {}),
+          });
         }
       }}
       className="flex flex-col gap-3"
@@ -869,18 +989,21 @@ function MagicLinkForm({
         required
         className={authInputClassName}
       />
+      <Turnstile key={captchaWidgetKey} onToken={setCaptchaToken} />
+      {errorMessage && (
+        <p className="text-center text-sm text-red-700">{errorMessage}</p>
+      )}
       <button
         type="submit"
-        disabled={magicLinkMutation.isPending || !email}
+        disabled={
+          magicLinkMutation.isPending ||
+          !email ||
+          (isTurnstileEnabled && !captchaToken)
+        }
         className={authPrimaryButtonClassName}
       >
         {magicLinkMutation.isPending ? "Sending..." : "Send magic link"}
       </button>
-      {magicLinkMutation.isError && (
-        <p className="text-center text-sm text-red-700">
-          Failed to send magic link. Please try again.
-        </p>
-      )}
     </form>
   );
 }
@@ -924,6 +1047,7 @@ function AuthMethodButton({
 function OAuthButton({
   flow,
   scheme,
+  desktop_state,
   redirect,
   provider,
   autoStart = false,
@@ -931,6 +1055,7 @@ function OAuthButton({
 }: {
   flow: "desktop" | "web";
   scheme?: DesktopScheme;
+  desktop_state?: string;
   redirect?: string;
   provider: OAuthProvider;
   autoStart?: boolean;
@@ -948,6 +1073,7 @@ function OAuthButton({
           provider,
           flow,
           scheme,
+          desktop_state,
           redirect,
         },
       });

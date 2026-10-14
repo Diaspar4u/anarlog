@@ -1,17 +1,19 @@
+import { isRedirect } from "@tanstack/react-router";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import test from "node:test";
 import { StrictMode, act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 
+import { consumeDesktopAuthHandoff } from "./auth-route-privacy.ts";
 import {
   attemptDesktopAppOpen,
   buildDesktopAuthCallbackPath,
   buildDesktopAuthDeeplink,
-  getDesktopAppOpenLinkProps,
   resolveDesktopAuthCallbackMethod,
   useDesktopAppAutoOpen,
 } from "./desktop-auth-handoff.ts";
+import { completeOAuthCallback } from "./desktop-oauth-callback.ts";
 
 const require = createRequire(import.meta.url);
 const { JSDOM } = require("jsdom") as {
@@ -37,18 +39,115 @@ test("builds an encoded desktop auth callback", () => {
     buildDesktopAuthDeeplink("anarlog-staging", undefined, "fake-refresh"),
     null,
   );
+
+  const nightly = buildDesktopAuthDeeplink(
+    "anarlog-nightly",
+    "access",
+    "refresh",
+  );
+  assert.ok(nightly);
+  assert.ok(nightly.startsWith("anarlog-nightly://auth/callback?"));
 });
 
-test("builds a web callback that preserves the sign-in method", () => {
-  assert.equal(
-    buildDesktopAuthCallbackPath(
+test("stores credentials before returning a token-free HTTP callback URL", () => {
+  const dom = new JSDOM("", { url: "https://anarlog.so" });
+  const previousWindow = globalThis.window;
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: dom.window,
+  });
+  try {
+    const state = "8d58e770-3a95-41ba-bfa1-ec03633a3a55";
+    const path = buildDesktopAuthCallbackPath(
       "fake access",
       "fake&refresh",
       "anarlog-staging",
       "email",
-    ),
-    "/callback/auth?flow=desktop&access_token=fake+access&refresh_token=fake%26refresh&scheme=anarlog-staging&method=email",
-  );
+      state,
+    );
+    const url = new URL(path, dom.window.location.origin);
+    assert.equal(url.searchParams.has("access_token"), false);
+    assert.equal(url.searchParams.has("refresh_token"), false);
+    assert.equal(url.searchParams.get("scheme"), "anarlog-staging");
+    assert.equal(url.searchParams.get("desktop_state"), state);
+    assert.equal(url.searchParams.get("method"), "email");
+    assert.deepEqual(consumeDesktopAuthHandoff(Date.now(), state), {
+      accessToken: "fake access",
+      refreshToken: "fake&refresh",
+    });
+    assert.equal(consumeDesktopAuthHandoff(), null);
+    Object.defineProperty(dom.window, "sessionStorage", {
+      get() {
+        throw new Error("storage unavailable");
+      },
+    });
+    assert.throws(
+      () => buildDesktopAuthCallbackPath("access", "refresh"),
+      /storage unavailable/,
+    );
+  } finally {
+    dom.window.close();
+    restoreGlobal("window", previousWindow);
+  }
+});
+
+test("the OAuth callback stores the exchanged session before its token-free redirect", async () => {
+  const dom = new JSDOM("", { url: "https://anarlog.so/auth/" });
+  const previousWindow = globalThis.window;
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: dom.window,
+  });
+  const state = "8d58e770-3a95-41ba-bfa1-ec03633a3a55";
+  const finish = () =>
+    completeOAuthCallback({
+      search: {
+        code: "oauth-code",
+        flow: "desktop",
+        scheme: "anarlog-staging",
+        desktop_state: state,
+        method: "google",
+      },
+      exchangeOAuthCode: async ({ data }) => {
+        assert.equal(data.code, "oauth-code");
+        return {
+          success: true,
+          access_token: "route-access",
+          refresh_token: "route-refresh",
+          newAccount: false,
+          createdAccount: false,
+          userId: "user",
+        };
+      },
+      capturePrivateRouteEvent: () => {},
+    });
+  try {
+    await assert.rejects(finish(), (error: unknown) => {
+      assert.ok(isRedirect(error));
+      assert.equal(error.options.to, "/callback/auth/");
+      assert.deepEqual(error.options.search, {
+        flow: "desktop",
+        handoff: "stored",
+        scheme: "anarlog-staging",
+        method: "google",
+        desktop_state: state,
+      });
+      assert.deepEqual(consumeDesktopAuthHandoff(Date.now(), state), {
+        accessToken: "route-access",
+        refreshToken: "route-refresh",
+      });
+      return true;
+    });
+    Object.defineProperty(dom.window, "sessionStorage", {
+      get() {
+        throw new Error("storage unavailable");
+      },
+    });
+    await assert.rejects(finish(), /storage unavailable/);
+  } finally {
+    dom.window.close();
+    restoreGlobal("window", previousWindow);
+  }
 });
 
 test("prefers the requested desktop sign-in method over a remembered method", () => {
@@ -173,27 +272,6 @@ test("attempts automatic opening once under StrictMode and remounts", async () =
   }
 });
 
-test("keeps the manual open link independently clickable", () => {
-  const dom = new JSDOM();
-  const deeplink = "anarlog-staging://auth/callback?access_token=a";
-  const anchor = dom.window.document.createElement("a");
-  const props = getDesktopAppOpenLinkProps(deeplink);
-  let clicks = 0;
-
-  anchor.href = props.href;
-  anchor.rel = props.rel;
-  anchor.addEventListener("click", (event) => {
-    clicks += 1;
-    event.preventDefault();
-  });
-  anchor.click();
-
-  assert.equal(anchor.getAttribute("href"), deeplink);
-  assert.equal(anchor.rel, "noreferrer");
-  assert.equal(clicks, 1);
-  dom.window.close();
-});
-
 function restoreGlobal(key: string, value: unknown) {
   if (value === undefined) {
     Reflect.deleteProperty(globalThis, key);
@@ -205,9 +283,3 @@ function restoreGlobal(key: string, value: unknown) {
     value,
   });
 }
-
-test("Nightly authentication returns to Nightly", () => {
-  const url = buildDesktopAuthDeeplink("anarlog-nightly", "access", "refresh");
-  assert.ok(url);
-  assert.ok(url.startsWith("anarlog-nightly://auth/callback?"));
-});

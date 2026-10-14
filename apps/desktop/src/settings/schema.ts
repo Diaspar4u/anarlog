@@ -39,6 +39,12 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "auto_stop_meetings"],
     default: true as boolean,
   },
+  primary_recording_device: {
+    type: "string",
+    path: ["general", "primary_recording_device"],
+    synced: true,
+    default: "" as string,
+  },
   auto_start_scheduled_meetings: {
     type: "boolean",
     path: ["general", "auto_start_scheduled_meetings"],
@@ -235,6 +241,11 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "capture_meeting_chat"],
     default: false as boolean,
   },
+  capture_shared_screens: {
+    type: "boolean",
+    path: ["general", "capture_shared_screens"],
+    default: false as boolean,
+  },
   cloud_sync_enabled: {
     type: "boolean",
     path: ["general", "cloud_sync_enabled"],
@@ -249,6 +260,11 @@ export const SETTING_DEFINITIONS = {
     type: "string",
     path: ["language", "spoken_languages"],
     default: "[]" as string,
+  },
+  summary_use_main_language: {
+    type: "boolean",
+    path: ["language", "summary_use_main_language"],
+    default: false as boolean,
   },
   personalization_dictionary_terms: {
     type: "string",
@@ -269,11 +285,6 @@ export const SETTING_DEFINITIONS = {
     type: "string",
     path: ["ai", "auto_summary_prompt"],
     default: "" as string,
-  },
-  summary_length: {
-    type: "string",
-    path: ["ai", "summary_length"],
-    default: "detailed" as string,
   },
   ignored_platforms: {
     type: "string",
@@ -358,7 +369,7 @@ export const SETTING_DEFINITIONS = {
   automation_markdown_export_enabled: {
     type: "boolean",
     path: ["automations", "markdown_export_enabled"],
-    default: false as boolean,
+    default: true as boolean,
   },
   automation_markdown_export_directory: {
     type: "string",

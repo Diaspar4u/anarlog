@@ -130,8 +130,8 @@ const SESSION_CONTENT_SQL = `
         'started_at_ms', transcript.started_at_ms,
         'ended_at_ms', transcript.ended_at_ms,
         'memo', transcript.memo,
-        'words_json', transcript.words_json,
-        'speaker_hints_json', transcript.speaker_hints_json
+        'words_json', CASE WHEN ? THEN transcript.words_json ELSE '[]' END,
+        'speaker_hints_json', CASE WHEN ? THEN transcript.speaker_hints_json ELSE '[]' END
       ))
       FROM transcripts AS transcript
       WHERE transcript.session_id = session.id
@@ -160,8 +160,22 @@ const SESSION_CONTENT_SQL = `
             FROM humans AS self_human
             WHERE self_human.id = session.owner_user_id
               AND self_human.deleted_at IS NULL
-              AND NULLIF(lower(self_human.email), '') IS NOT NULL
-              AND lower(self_human.email) = lower(COALESCE(NULLIF(human.email, ''), participant.email))
+              AND (
+                (
+                  NULLIF(lower(self_human.email), '') IS NOT NULL
+                  AND lower(self_human.email) = lower(COALESCE(NULLIF(human.email, ''), participant.email))
+                )
+                OR EXISTS (
+                  SELECT 1
+                  FROM json_each(CASE
+                    WHEN json_valid(self_human.metadata_json)
+                      AND json_type(self_human.metadata_json, '$.additionalEmails') = 'array'
+                    THEN json_extract(self_human.metadata_json, '$.additionalEmails')
+                    ELSE '[]'
+                  END) AS self_additional_email
+                  WHERE lower(self_additional_email.value) = lower(COALESCE(NULLIF(human.email, ''), participant.email))
+                )
+              )
           )
         )
     ), '[]') AS participants_json
@@ -193,11 +207,16 @@ const SESSION_CONTENT_SQL = `
 
 export async function loadSessionContentSnapshot(
   sessionId: string,
+  options: { includeTranscriptWords?: boolean } = {},
 ): Promise<SessionContentSnapshot | null> {
   if (!sessionId) return null;
   const rows = await liveQueryClient.execute<SessionContentSqlRow>(
     SESSION_CONTENT_SQL,
-    [sessionId],
+    [
+      options.includeTranscriptWords === false ? 0 : 1,
+      options.includeTranscriptWords === false ? 0 : 1,
+      sessionId,
+    ],
   );
   const row = rows[0];
   return row ? mapSessionContentRow(row) : null;

@@ -17,6 +17,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as DiscordRouteImport } from './routes/discord'
 import { Route as ConfirmAuthRouteImport } from './routes/confirm-auth'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as ViewRouteRouteImport } from './routes/_view/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as YcIndexRouteImport } from './routes/yc/index'
@@ -34,12 +35,14 @@ import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
 import { Route as ApiTemplatesRouteImport } from './routes/api/templates'
 import { Route as ApiShortcutsRouteImport } from './routes/api/shortcuts'
 import { Route as ViewAppRouteRouteImport } from './routes/_view/app/route'
+import { Route as GuidesTranscriptionIndexRouteImport } from './routes/guides/transcription/index'
 import { Route as ViewDownloadIndexRouteImport } from './routes/_view/download/index'
 import { Route as ViewAppIndexRouteImport } from './routes/_view/app/index'
 import { Route as TeamInviteInvitationIdRouteImport } from './routes/team/invite/$invitationId'
 import { Route as SharePublicPublicSlugRouteImport } from './routes/share/public/$publicSlug'
 import { Route as ShareLinkShareIdRouteImport } from './routes/share/link/$shareId'
 import { Route as ShareInviteInvitationIdRouteImport } from './routes/share/invite/$invitationId'
+import { Route as ChangelogStreamVersionRouteImport } from './routes/changelog/$stream.$version'
 import { Route as ApiTweetIdRouteImport } from './routes/api/tweet.$id'
 import { Route as ApiCronJobRouteImport } from './routes/api/cron/$job'
 import { Route as ApiAssetsSplatRouteImport } from './routes/api/assets.$'
@@ -53,6 +56,7 @@ import { Route as ViewAppTeamCheckoutRouteImport } from './routes/_view/app/team
 import { Route as ViewAppSwitchPlanRouteImport } from './routes/_view/app/switch-plan'
 import { Route as ViewAppPortalRouteImport } from './routes/_view/app/portal'
 import { Route as ViewAppIntegrationRouteImport } from './routes/_view/app/integration'
+import { Route as ViewAppGoogleDrivePickerRouteImport } from './routes/_view/app/google-drive-picker'
 import { Route as ViewAppCheckoutRouteImport } from './routes/_view/app/checkout'
 import { Route as ViewAppAccountRouteImport } from './routes/_view/app/account'
 import { Route as ViewDownloadNightlyIndexRouteImport } from './routes/_view/download/nightly/index'
@@ -99,6 +103,11 @@ const ConfirmAuthRoute = ConfirmAuthRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ViewRouteRoute = ViewRouteRouteImport.update({
@@ -185,6 +194,12 @@ const ViewAppRouteRoute = ViewAppRouteRouteImport.update({
   path: '/app',
   getParentRoute: () => ViewRouteRoute,
 } as any)
+const GuidesTranscriptionIndexRoute =
+  GuidesTranscriptionIndexRouteImport.update({
+    id: '/guides/transcription/',
+    path: '/guides/transcription/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ViewDownloadIndexRoute = ViewDownloadIndexRouteImport.update({
   id: '/download/',
   path: '/download/',
@@ -213,6 +228,11 @@ const ShareLinkShareIdRoute = ShareLinkShareIdRouteImport.update({
 const ShareInviteInvitationIdRoute = ShareInviteInvitationIdRouteImport.update({
   id: '/share/invite/$invitationId',
   path: '/share/invite/$invitationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangelogStreamVersionRoute = ChangelogStreamVersionRouteImport.update({
+  id: '/changelog/$stream/$version',
+  path: '/changelog/$stream/$version',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTweetIdRoute = ApiTweetIdRouteImport.update({
@@ -281,6 +301,12 @@ const ViewAppIntegrationRoute = ViewAppIntegrationRouteImport.update({
   path: '/integration',
   getParentRoute: () => ViewAppRouteRoute,
 } as any)
+const ViewAppGoogleDrivePickerRoute =
+  ViewAppGoogleDrivePickerRouteImport.update({
+    id: '/google-drive-picker',
+    path: '/google-drive-picker',
+    getParentRoute: () => ViewAppRouteRoute,
+  } as any)
 const ViewAppCheckoutRoute = ViewAppCheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
@@ -321,6 +347,7 @@ const ApiOgShareLinkShareIdRoute = ApiOgShareLinkShareIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
   '/confirm-auth': typeof ConfirmAuthRoute
   '/discord': typeof DiscordRoute
@@ -346,6 +373,7 @@ export interface FileRoutesByFullPath {
   '/yc/': typeof YcIndexRoute
   '/app/account': typeof ViewAppAccountRoute
   '/app/checkout': typeof ViewAppCheckoutRoute
+  '/app/google-drive-picker': typeof ViewAppGoogleDrivePickerRoute
   '/app/integration': typeof ViewAppIntegrationRoute
   '/app/portal': typeof ViewAppPortalRoute
   '/app/switch-plan': typeof ViewAppSwitchPlanRoute
@@ -359,12 +387,14 @@ export interface FileRoutesByFullPath {
   '/api/assets/$': typeof ApiAssetsSplatRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/tweet/$id': typeof ApiTweetIdRoute
+  '/changelog/$stream/$version': typeof ChangelogStreamVersionRoute
   '/share/invite/$invitationId': typeof ShareInviteInvitationIdRoute
   '/share/link/$shareId': typeof ShareLinkShareIdRoute
   '/share/public/$publicSlug': typeof SharePublicPublicSlugRoute
   '/team/invite/$invitationId': typeof TeamInviteInvitationIdRoute
   '/app/': typeof ViewAppIndexRoute
   '/download/': typeof ViewDownloadIndexRoute
+  '/guides/transcription/': typeof GuidesTranscriptionIndexRoute
   '/api/og/blog/$slug': typeof ApiOgBlogSlugRoute
   '/download/nightly/': typeof ViewDownloadNightlyIndexRoute
   '/api/og/share/link/$shareId': typeof ApiOgShareLinkShareIdRoute
@@ -373,6 +403,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
   '/confirm-auth': typeof ConfirmAuthRoute
   '/discord': typeof DiscordRoute
@@ -397,6 +428,7 @@ export interface FileRoutesByTo {
   '/yc': typeof YcIndexRoute
   '/app/account': typeof ViewAppAccountRoute
   '/app/checkout': typeof ViewAppCheckoutRoute
+  '/app/google-drive-picker': typeof ViewAppGoogleDrivePickerRoute
   '/app/integration': typeof ViewAppIntegrationRoute
   '/app/portal': typeof ViewAppPortalRoute
   '/app/switch-plan': typeof ViewAppSwitchPlanRoute
@@ -410,12 +442,14 @@ export interface FileRoutesByTo {
   '/api/assets/$': typeof ApiAssetsSplatRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/tweet/$id': typeof ApiTweetIdRoute
+  '/changelog/$stream/$version': typeof ChangelogStreamVersionRoute
   '/share/invite/$invitationId': typeof ShareInviteInvitationIdRoute
   '/share/link/$shareId': typeof ShareLinkShareIdRoute
   '/share/public/$publicSlug': typeof SharePublicPublicSlugRoute
   '/team/invite/$invitationId': typeof TeamInviteInvitationIdRoute
   '/app': typeof ViewAppIndexRoute
   '/download': typeof ViewDownloadIndexRoute
+  '/guides/transcription': typeof GuidesTranscriptionIndexRoute
   '/api/og/blog/$slug': typeof ApiOgBlogSlugRoute
   '/download/nightly': typeof ViewDownloadNightlyIndexRoute
   '/api/og/share/link/$shareId': typeof ApiOgShareLinkShareIdRoute
@@ -426,6 +460,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_view': typeof ViewRouteRouteWithChildren
+  '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
   '/confirm-auth': typeof ConfirmAuthRoute
   '/discord': typeof DiscordRoute
@@ -451,6 +486,7 @@ export interface FileRoutesById {
   '/yc/': typeof YcIndexRoute
   '/_view/app/account': typeof ViewAppAccountRoute
   '/_view/app/checkout': typeof ViewAppCheckoutRoute
+  '/_view/app/google-drive-picker': typeof ViewAppGoogleDrivePickerRoute
   '/_view/app/integration': typeof ViewAppIntegrationRoute
   '/_view/app/portal': typeof ViewAppPortalRoute
   '/_view/app/switch-plan': typeof ViewAppSwitchPlanRoute
@@ -464,12 +500,14 @@ export interface FileRoutesById {
   '/api/assets/$': typeof ApiAssetsSplatRoute
   '/api/cron/$job': typeof ApiCronJobRoute
   '/api/tweet/$id': typeof ApiTweetIdRoute
+  '/changelog/$stream/$version': typeof ChangelogStreamVersionRoute
   '/share/invite/$invitationId': typeof ShareInviteInvitationIdRoute
   '/share/link/$shareId': typeof ShareLinkShareIdRoute
   '/share/public/$publicSlug': typeof SharePublicPublicSlugRoute
   '/team/invite/$invitationId': typeof TeamInviteInvitationIdRoute
   '/_view/app/': typeof ViewAppIndexRoute
   '/_view/download/': typeof ViewDownloadIndexRoute
+  '/guides/transcription/': typeof GuidesTranscriptionIndexRoute
   '/api/og/blog/$slug': typeof ApiOgBlogSlugRoute
   '/_view/download/nightly/': typeof ViewDownloadNightlyIndexRoute
   '/api/og/share/link/$shareId': typeof ApiOgShareLinkShareIdRoute
@@ -480,6 +518,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about'
     | '/auth'
     | '/confirm-auth'
     | '/discord'
@@ -505,6 +544,7 @@ export interface FileRouteTypes {
     | '/yc/'
     | '/app/account'
     | '/app/checkout'
+    | '/app/google-drive-picker'
     | '/app/integration'
     | '/app/portal'
     | '/app/switch-plan'
@@ -518,12 +558,14 @@ export interface FileRouteTypes {
     | '/api/assets/$'
     | '/api/cron/$job'
     | '/api/tweet/$id'
+    | '/changelog/$stream/$version'
     | '/share/invite/$invitationId'
     | '/share/link/$shareId'
     | '/share/public/$publicSlug'
     | '/team/invite/$invitationId'
     | '/app/'
     | '/download/'
+    | '/guides/transcription/'
     | '/api/og/blog/$slug'
     | '/download/nightly/'
     | '/api/og/share/link/$shareId'
@@ -532,6 +574,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
     | '/auth'
     | '/confirm-auth'
     | '/discord'
@@ -556,6 +599,7 @@ export interface FileRouteTypes {
     | '/yc'
     | '/app/account'
     | '/app/checkout'
+    | '/app/google-drive-picker'
     | '/app/integration'
     | '/app/portal'
     | '/app/switch-plan'
@@ -569,12 +613,14 @@ export interface FileRouteTypes {
     | '/api/assets/$'
     | '/api/cron/$job'
     | '/api/tweet/$id'
+    | '/changelog/$stream/$version'
     | '/share/invite/$invitationId'
     | '/share/link/$shareId'
     | '/share/public/$publicSlug'
     | '/team/invite/$invitationId'
     | '/app'
     | '/download'
+    | '/guides/transcription'
     | '/api/og/blog/$slug'
     | '/download/nightly'
     | '/api/og/share/link/$shareId'
@@ -584,6 +630,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_view'
+    | '/about'
     | '/auth'
     | '/confirm-auth'
     | '/discord'
@@ -609,6 +656,7 @@ export interface FileRouteTypes {
     | '/yc/'
     | '/_view/app/account'
     | '/_view/app/checkout'
+    | '/_view/app/google-drive-picker'
     | '/_view/app/integration'
     | '/_view/app/portal'
     | '/_view/app/switch-plan'
@@ -622,12 +670,14 @@ export interface FileRouteTypes {
     | '/api/assets/$'
     | '/api/cron/$job'
     | '/api/tweet/$id'
+    | '/changelog/$stream/$version'
     | '/share/invite/$invitationId'
     | '/share/link/$shareId'
     | '/share/public/$publicSlug'
     | '/team/invite/$invitationId'
     | '/_view/app/'
     | '/_view/download/'
+    | '/guides/transcription/'
     | '/api/og/blog/$slug'
     | '/_view/download/nightly/'
     | '/api/og/share/link/$shareId'
@@ -638,6 +688,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ViewRouteRoute: typeof ViewRouteRouteWithChildren
+  AboutRoute: typeof AboutRoute
   AuthRoute: typeof AuthRoute
   ConfirmAuthRoute: typeof ConfirmAuthRoute
   DiscordRoute: typeof DiscordRoute
@@ -663,10 +714,12 @@ export interface RootRouteChildren {
   ApiAssetsSplatRoute: typeof ApiAssetsSplatRoute
   ApiCronJobRoute: typeof ApiCronJobRoute
   ApiTweetIdRoute: typeof ApiTweetIdRoute
+  ChangelogStreamVersionRoute: typeof ChangelogStreamVersionRoute
   ShareInviteInvitationIdRoute: typeof ShareInviteInvitationIdRoute
   ShareLinkShareIdRoute: typeof ShareLinkShareIdRoute
   SharePublicPublicSlugRoute: typeof SharePublicPublicSlugRoute
   TeamInviteInvitationIdRoute: typeof TeamInviteInvitationIdRoute
+  GuidesTranscriptionIndexRoute: typeof GuidesTranscriptionIndexRoute
   ApiOgBlogSlugRoute: typeof ApiOgBlogSlugRoute
   ApiOgShareLinkShareIdRoute: typeof ApiOgShareLinkShareIdRoute
   ApiOgSharePublicPublicSlugRoute: typeof ApiOgSharePublicPublicSlugRoute
@@ -729,6 +782,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_view': {
@@ -850,6 +910,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ViewAppRouteRouteImport
       parentRoute: typeof ViewRouteRoute
     }
+    '/guides/transcription/': {
+      id: '/guides/transcription/'
+      path: '/guides/transcription'
+      fullPath: '/guides/transcription/'
+      preLoaderRoute: typeof GuidesTranscriptionIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_view/download/': {
       id: '/_view/download/'
       path: '/download'
@@ -890,6 +957,13 @@ declare module '@tanstack/react-router' {
       path: '/share/invite/$invitationId'
       fullPath: '/share/invite/$invitationId'
       preLoaderRoute: typeof ShareInviteInvitationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/changelog/$stream/$version': {
+      id: '/changelog/$stream/$version'
+      path: '/changelog/$stream/$version'
+      fullPath: '/changelog/$stream/$version'
+      preLoaderRoute: typeof ChangelogStreamVersionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/tweet/$id': {
@@ -983,6 +1057,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ViewAppIntegrationRouteImport
       parentRoute: typeof ViewAppRouteRoute
     }
+    '/_view/app/google-drive-picker': {
+      id: '/_view/app/google-drive-picker'
+      path: '/google-drive-picker'
+      fullPath: '/app/google-drive-picker'
+      preLoaderRoute: typeof ViewAppGoogleDrivePickerRouteImport
+      parentRoute: typeof ViewAppRouteRoute
+    }
     '/_view/app/checkout': {
       id: '/_view/app/checkout'
       path: '/checkout'
@@ -1038,6 +1119,7 @@ declare module '@tanstack/react-router' {
 interface ViewAppRouteRouteChildren {
   ViewAppAccountRoute: typeof ViewAppAccountRoute
   ViewAppCheckoutRoute: typeof ViewAppCheckoutRoute
+  ViewAppGoogleDrivePickerRoute: typeof ViewAppGoogleDrivePickerRoute
   ViewAppIntegrationRoute: typeof ViewAppIntegrationRoute
   ViewAppPortalRoute: typeof ViewAppPortalRoute
   ViewAppSwitchPlanRoute: typeof ViewAppSwitchPlanRoute
@@ -1048,6 +1130,7 @@ interface ViewAppRouteRouteChildren {
 const ViewAppRouteRouteChildren: ViewAppRouteRouteChildren = {
   ViewAppAccountRoute: ViewAppAccountRoute,
   ViewAppCheckoutRoute: ViewAppCheckoutRoute,
+  ViewAppGoogleDrivePickerRoute: ViewAppGoogleDrivePickerRoute,
   ViewAppIntegrationRoute: ViewAppIntegrationRoute,
   ViewAppPortalRoute: ViewAppPortalRoute,
   ViewAppSwitchPlanRoute: ViewAppSwitchPlanRoute,
@@ -1090,6 +1173,7 @@ const ViewRouteRouteWithChildren = ViewRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ViewRouteRoute: ViewRouteRouteWithChildren,
+  AboutRoute: AboutRoute,
   AuthRoute: AuthRoute,
   ConfirmAuthRoute: ConfirmAuthRoute,
   DiscordRoute: DiscordRoute,
@@ -1115,10 +1199,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAssetsSplatRoute: ApiAssetsSplatRoute,
   ApiCronJobRoute: ApiCronJobRoute,
   ApiTweetIdRoute: ApiTweetIdRoute,
+  ChangelogStreamVersionRoute: ChangelogStreamVersionRoute,
   ShareInviteInvitationIdRoute: ShareInviteInvitationIdRoute,
   ShareLinkShareIdRoute: ShareLinkShareIdRoute,
   SharePublicPublicSlugRoute: SharePublicPublicSlugRoute,
   TeamInviteInvitationIdRoute: TeamInviteInvitationIdRoute,
+  GuidesTranscriptionIndexRoute: GuidesTranscriptionIndexRoute,
   ApiOgBlogSlugRoute: ApiOgBlogSlugRoute,
   ApiOgShareLinkShareIdRoute: ApiOgShareLinkShareIdRoute,
   ApiOgSharePublicPublicSlugRoute: ApiOgSharePublicPublicSlugRoute,

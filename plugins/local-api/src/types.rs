@@ -64,3 +64,15 @@ impl Default for MarkdownExportOptions {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+pub struct MarkdownExportPolicy {
+    pub enabled: bool,
+    pub directory: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+pub struct DriveMarkdownExport {
+    pub filename: String,
+    pub markdown: String,
+}

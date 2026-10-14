@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 
 // Plain data only. The release renderer must never import React Scan's runtime.
 export type PromptMode = "fix" | "explanation" | "data";
-export type ScanComponent = Readonly<{
+type ScanComponent = Readonly<{
   name: string;
   renders: number;
   time: number;
@@ -24,15 +24,13 @@ export type ScanEvent = Readonly<{
 }>;
 export type ScanData = Readonly<{
   events: readonly ScanEvent[];
-  alertsEnabled: boolean;
 }>;
 export type ScanDataControls = Readonly<{
   clear: () => void;
   getPrompt: (id: string, mode: PromptMode) => string;
-  setAlerts: (enabled: boolean) => void;
   mountInspector: (host: HTMLElement) => () => void;
 }>;
-const EMPTY: ScanData = { events: [], alertsEnabled: false };
+const EMPTY: ScanData = { events: [] };
 let snapshot = EMPTY;
 let controls: ScanDataControls | null = null;
 const listeners = new Set<() => void>();
@@ -64,9 +62,6 @@ export function clearScanHistory(): void {
 }
 export function getScanPrompt(id: string, mode: PromptMode): string {
   return controls?.getPrompt(id, mode) ?? "";
-}
-export function setScanAlerts(enabled: boolean): void {
-  controls?.setAlerts(enabled);
 }
 export function mountScanInspector(host: HTMLElement): () => void {
   return controls?.mountInspector(host) ?? (() => {});

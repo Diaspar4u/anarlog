@@ -69,6 +69,10 @@ vi.mock("@lingui/react/macro", () => ({
   }),
 }));
 
+vi.mock("~/auth/billing-context", () => ({
+  useBillingAccess: () => ({ isPro: false }),
+}));
+
 vi.mock("./custom-sidebar-header", () => ({
   CustomSidebarHeader: () => <div />,
 }));
@@ -167,7 +171,7 @@ describe("SettingsNav", () => {
     fireEvent.click(screen.getByRole("button", { name: label }));
 
     expect(
-      screen.queryByTestId(`settings-nav-destination-icon-${destination.type}`),
+      screen.queryByTestId(`settings-nav-icon-${destination.type}`),
     ).toBeTruthy();
     expect(mocks.openNew).toHaveBeenCalledWith(destination);
   });

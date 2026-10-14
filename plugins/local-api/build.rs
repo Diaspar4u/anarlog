@@ -6,6 +6,9 @@ const COMMANDS: &[&str] = &[
     "test_webhook",
     "dispatch_event",
     "export_meeting_markdown",
+    "markdown_export_policy",
+    "export_meeting_markdown_automatically",
+    "prepare_drive_markdown",
     "get_cloud_snapshot",
     "list_cloud_snapshot_ids",
 ];

@@ -1,6 +1,7 @@
 import { type UnlistenFn } from "@tauri-apps/api/event";
 
 import { events as notificationEvents } from "@anlg/plugin-notification";
+import { commands as openerCommands } from "@anlg/plugin-opener2";
 import type {
   CaptureConfigUpdate,
   IdentityAssignment,
@@ -10,15 +11,18 @@ import {
   events as updaterEvents,
 } from "@anlg/plugin-updater2";
 import { getCurrentWebviewWindowLabel } from "@anlg/plugin-windows";
+import { useMountEffect } from "@anlg/ui/hooks/use-mount-effect";
 
-import { getCalendarEventStartedAt } from "~/calendar/queries";
+import {
+  getCalendarEventMeetingLink,
+  getCalendarEventStartedAt,
+} from "~/calendar/queries";
 import { liveQueryClient } from "~/db";
 import { createSession, getOrCreateSessionForEventId } from "~/session/queries";
 import { setSettingValue } from "~/settings/queries";
 import { isAppStoreBuild } from "~/shared/app-store";
 import { useConfigValue, useConfigValues } from "~/shared/config";
 import { useLatestRef } from "~/shared/hooks/useLatestRef";
-import { useMountEffect } from "~/shared/hooks/useMountEffect";
 import { listenerStore } from "~/store/zustand/listener/instance";
 import { useTabs } from "~/store/zustand/tabs";
 import {
@@ -31,6 +35,7 @@ import {
   getTranscriptionLanguages,
 } from "~/stt/capabilities";
 import { buildRenderTranscriptRequestFromRows } from "~/stt/render-transcript";
+import { parseSpeakerContext } from "~/stt/speaker-context";
 
 type CaptureIdentitySqlRow = {
   session_id: string;
@@ -43,6 +48,7 @@ type LiveTranscriptIdentitySqlRow = {
   started_at_ms: number | string;
   words_json: string;
   speaker_hints_json: string;
+  speaker_context: string | null;
 };
 
 const CAPTURE_IDENTITY_SQL = `
@@ -71,11 +77,32 @@ const CAPTURE_IDENTITY_SQL = `
         AND self_human.deleted_at IS NULL
         AND (
           (
-            NULLIF(lower(self_human.email), '') IS NOT NULL
-            AND lower(self_human.email) = lower(COALESCE(
+            NULLIF(lower(COALESCE(
               NULLIF(participant_human.email, ''),
               participant.email
-            ))
+            )), '') IS NOT NULL
+            AND (
+              (
+                NULLIF(lower(self_human.email), '') IS NOT NULL
+                AND lower(self_human.email) = lower(COALESCE(
+                  NULLIF(participant_human.email, ''),
+                  participant.email
+                ))
+              )
+              OR EXISTS (
+                SELECT 1
+                FROM json_each(CASE
+                  WHEN json_valid(self_human.metadata_json)
+                    AND json_type(self_human.metadata_json, '$.additionalEmails') = 'array'
+                  THEN json_extract(self_human.metadata_json, '$.additionalEmails')
+                  ELSE '[]'
+                END) AS self_additional_email
+                WHERE lower(self_additional_email.value) = lower(COALESCE(
+                  NULLIF(participant_human.email, ''),
+                  participant.email
+                ))
+              )
+            )
           )
           OR (
             NULLIF(lower(owner_participant.email), '') IS NOT NULL
@@ -98,7 +125,12 @@ const LIVE_TRANSCRIPT_IDENTITY_SQL = `
     transcript.id,
     transcript.started_at_ms,
     transcript.words_json,
-    transcript.speaker_hints_json
+    transcript.speaker_hints_json,
+    (
+      SELECT json_extract(session.metadata_json, '$.speaker_context')
+      FROM sessions AS session
+      WHERE session.id = transcript.session_id AND session.deleted_at IS NULL
+    ) AS speaker_context
   FROM transcripts AS transcript
   WHERE transcript.session_id = ? AND transcript.deleted_at IS NULL
   ORDER BY transcript.started_at_ms DESC, transcript.created_at DESC
@@ -144,6 +176,16 @@ async function createNotificationSession(
     sessionId,
     autoStart: await shouldAutoStartNotificationSession(eventId, triggerAppIds),
   };
+}
+
+async function openCalendarMeeting(eventId: string): Promise<void> {
+  const meetingLink = await getCalendarEventMeetingLink(eventId);
+  if (meetingLink) {
+    const result = await openerCommands.openUrl(meetingLink, null);
+    if (result.status === "error") {
+      throw new Error(result.error);
+    }
+  }
 }
 
 function handleAutoStopEndedNotification(
@@ -197,6 +239,8 @@ function getSessionParticipantHumanIds(
 
 function getLiveSpeakerAssignments(
   rows: LiveTranscriptIdentitySqlRow[],
+  participantHumanIds: string[],
+  selfHumanId: string | null,
 ): IdentityAssignment[] {
   const row = rows[0];
   if (!row) {
@@ -210,7 +254,67 @@ function getLiveSpeakerAssignments(
       speaker_hints: parseJsonArray(row.speaker_hints_json),
     },
   ]);
-  return request?.transcripts[0]?.assignments ?? [];
+  const assignments = request?.transcripts[0]?.assignments ?? [];
+
+  // render_transcript_segments extends assignments with the participant channel
+  // defaults only while no speaker context describes the capture; the live
+  // engine has to mirror that or its segments stay anonymous until they settle.
+  if (parseSpeakerContext(row.speaker_context).intervals.length > 0) {
+    return assignments;
+  }
+  // Channel-scope assignments are last-write-wins in both renderers, so only
+  // synthesize a default for channels without an explicit channel assignment.
+  const claimedChannels = new Set(
+    assignments
+      .map((assignment) =>
+        assignment.scope.kind === "channel" ? assignment.scope.channel : null,
+      )
+      .filter((channel) => channel !== null),
+  );
+  return [
+    ...assignments,
+    ...channelAssignmentsForParticipants(
+      participantHumanIds,
+      selfHumanId,
+    ).filter(
+      (assignment) =>
+        assignment.scope.kind !== "channel" ||
+        !claimedChannels.has(assignment.scope.channel),
+    ),
+  ];
+}
+
+// Mirrors `channel_assignments_for_participants` in crates/transcript.
+function channelAssignmentsForParticipants(
+  participantHumanIds: string[],
+  selfHumanId: string | null,
+): IdentityAssignment[] {
+  if (!selfHumanId) {
+    return [];
+  }
+
+  const assignments: IdentityAssignment[] = [
+    {
+      human_id: selfHumanId,
+      scope: { kind: "channel", channel: "DirectMic" },
+    },
+  ];
+
+  const others = [
+    ...new Set(
+      participantHumanIds.filter(
+        (humanId) => humanId && humanId !== selfHumanId,
+      ),
+    ),
+  ];
+  if (others.length === 1) {
+    assignments.push({
+      human_id: others[0]!,
+      scope: { kind: "channel", channel: "RemoteParty" },
+    });
+  }
+
+  return assignments;
 }
 
 function parseJsonArray<T>(value: string): T[] {
@@ -317,17 +421,23 @@ function LiveCaptureConfigSyncReady({
       }
 
       const session = rows.find((row) => row.session_id === live.sessionId);
+      const participantHumanIds = getSessionParticipantHumanIds(
+        rows,
+        live.sessionId,
+      );
+      const selfHumanId = session?.owner_user_id || null;
       const nextConfig: CaptureConfigUpdate = {
         session_id: live.sessionId,
         languages: liveConfig.languages,
-        participant_human_ids: getSessionParticipantHumanIds(
-          rows,
-          live.sessionId,
-        ),
-        self_human_id: session?.owner_user_id || null,
+        participant_human_ids: participantHumanIds,
+        self_human_id: selfHumanId,
         speaker_assignments:
           transcriptSessionId === live.sessionId && hasTranscriptSnapshot
-            ? getLiveSpeakerAssignments(transcriptRows)
+            ? getLiveSpeakerAssignments(
+                transcriptRows,
+                participantHumanIds,
+                selfHumanId,
+              )
             : [],
       };
       // Every capture starts its engine without speaker assignments, so a
@@ -565,7 +675,11 @@ function useNotificationEvents() {
             openNewRef.current({
               type: "sessions",
               id: sourceSessionId,
-              state: { view: null, autoStart: null },
+              state: {
+                view: null,
+                autoStart: null,
+                scheduledAutoStart: null,
+              },
             });
             return;
           }
@@ -582,7 +696,11 @@ function useNotificationEvents() {
               openNewRef.current({
                 type: "sessions",
                 id: sessionId,
-                state: { view: null, autoStart: autoStart ? true : null },
+                state: {
+                  view: null,
+                  autoStart: autoStart ? true : null,
+                  scheduledAutoStart: null,
+                },
               });
             })
             .catch((error) => {
@@ -591,6 +709,51 @@ function useNotificationEvents() {
                 error,
               );
             });
+        } else if (payload.type === "notification_action") {
+          if (payload.source?.type !== "calendar_event") {
+            return;
+          }
+
+          const eventId = payload.source.event_id;
+          if (payload.action === "open_meeting") {
+            void openCalendarMeeting(eventId).catch((error) => {
+              console.error(
+                "[notification] failed to open calendar meeting",
+                error,
+              );
+            });
+            return;
+          }
+
+          void (async () => {
+            try {
+              const sessionId = await getOrCreateSessionForEventId(eventId);
+              openNewRef.current({
+                type: "sessions",
+                id: sessionId,
+                state: {
+                  view: null,
+                  autoStart: true,
+                },
+              });
+            } catch (error) {
+              console.error(
+                "[notification] failed to start calendar event recording",
+                error,
+              );
+            }
+
+            try {
+              // Opening the meeting last returns focus to the meeting client,
+              // while the session starts from the route's auto-start state.
+              await openCalendarMeeting(eventId);
+            } catch (error) {
+              console.error(
+                "[notification] failed to open calendar meeting",
+                error,
+              );
+            }
+          })();
         } else if (payload.type === "notification_option_selected") {
           const selectedIndex = payload.selected_index;
           const eventIds =
@@ -617,7 +780,11 @@ function useNotificationEvents() {
               openNewRef.current({
                 type: "sessions",
                 id: sessionId,
-                state: { view: null, autoStart: true },
+                state: {
+                  view: null,
+                  autoStart: true,
+                  scheduledAutoStart: null,
+                },
               });
             })
             .catch((error) => {

@@ -205,8 +205,8 @@ describe("MeetingImportScreen", () => {
       screen.getAllByRole("button", { name: "Choose files" }),
     ).toHaveLength(5);
     expect(
-      screen.getAllByText(/Direct connection is not available yet/i),
-    ).toHaveLength(3);
+      screen.queryByText(/Direct connection is not available yet/i),
+    ).toBeNull();
     expect(
       container.querySelectorAll('img[src^="data:image/png;base64,"]'),
     ).toHaveLength(4);
@@ -285,8 +285,8 @@ describe("MeetingImportScreen", () => {
       screen.queryByRole("button", { name: "Connect & import" }),
     ).toBeNull();
     expect(
-      screen.getByText(/Direct connection is not available yet/i),
-    ).toBeTruthy();
+      screen.queryByText(/Direct connection is not available yet/i),
+    ).toBeNull();
   });
 
   it("does not require sign-in for file-only imports", async () => {
@@ -352,8 +352,8 @@ describe("MeetingImportScreen", () => {
     ).toBeNull();
     expect(mocks.connectNangoImport).not.toHaveBeenCalled();
     expect(
-      screen.getByText(/Direct connection is not available yet/i),
-    ).toBeTruthy();
+      screen.queryByText(/Direct connection is not available yet/i),
+    ).toBeNull();
   });
 
   it("connects Plaud by running the local CLI instead of file-only import", async () => {
@@ -372,11 +372,7 @@ describe("MeetingImportScreen", () => {
       expect(mocks.connectConnectedImport).toHaveBeenCalledOnce();
     });
     expect(mocks.connectNangoImport).not.toHaveBeenCalled();
-    expect(
-      screen.getByText(
-        /Connected · New meetings are imported automatically while Anarlog is running/i,
-      ),
-    ).toBeTruthy();
+    expect(screen.getByText("Connected")).toBeTruthy();
     expect(
       screen.queryByText(/Direct connection is not available yet/i),
     ).toBeNull();
@@ -395,8 +391,8 @@ describe("MeetingImportScreen", () => {
     ).toBeNull();
     expect(mocks.connectConnectedImport).not.toHaveBeenCalled();
     expect(
-      screen.getByText(/Direct connection is not available yet/i),
-    ).toBeTruthy();
+      screen.queryByText(/Direct connection is not available yet/i),
+    ).toBeNull();
   });
 
   it("shows the empty state when nothing is detected", async () => {

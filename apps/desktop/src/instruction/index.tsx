@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { commands as openerCommands } from "@anlg/plugin-opener2";
 import {
@@ -12,24 +12,24 @@ import {
 import { OutlookIcon } from "@anlg/ui/components/icons/outlook";
 import { Button } from "@anlg/ui/components/ui/button";
 import { Input } from "@anlg/ui/components/ui/input";
+import { useMountEffect } from "@anlg/ui/hooks/use-mount-effect";
 import { cn } from "@anlg/utils";
 
 import { useAuth } from "~/auth";
+import { WindowsWindowControls } from "~/main/windows-window-controls";
+import { useLatestRef } from "~/shared/hooks/useLatestRef";
+import { usesWindowsStyleTitleBar } from "~/shared/hooks/useWindowControlsGutter";
 
 export type InstructionType = "sign-in" | "billing" | "integration";
 
 function useInstructionCleanup(onCleanup?: () => void) {
-  const cleanupRef = useRef(onCleanup);
+  const cleanupRef = useLatestRef(onCleanup);
 
-  useEffect(() => {
-    cleanupRef.current = onCleanup;
-  }, [onCleanup]);
-
-  useEffect(() => {
+  useMountEffect(() => {
     return () => {
       cleanupRef.current?.();
     };
-  }, []);
+  });
 }
 
 function InstructionShell({
@@ -37,6 +37,7 @@ function InstructionShell({
   description,
   icon,
   onBack,
+  onClose,
   action,
   children,
 }: {
@@ -44,12 +45,21 @@ function InstructionShell({
   description: ReactNode;
   icon?: ReactNode;
   onBack: () => void;
+  onClose: () => void;
   action?: ReactNode;
   children?: ReactNode;
 }) {
   return (
     <div className="from-background via-card to-card relative flex h-full flex-col overflow-hidden bg-linear-to-b select-none">
       <div className="from-muted/40 pointer-events-none absolute inset-x-0 top-0 h-32 bg-linear-to-b to-transparent" />
+      {usesWindowsStyleTitleBar() ? (
+        <div
+          data-tauri-drag-region
+          className="absolute inset-x-0 top-0 z-20 flex h-10 justify-end"
+        >
+          <WindowsWindowControls onClose={onClose} />
+        </div>
+      ) : null}
 
       <div
         data-tauri-drag-region
@@ -109,6 +119,7 @@ function ExternalInstruction({
   icon,
   actionLabel,
   onBack,
+  onClose,
   url,
 }: {
   title: string;
@@ -116,6 +127,7 @@ function ExternalInstruction({
   icon?: ReactNode;
   actionLabel: string;
   onBack: () => void;
+  onClose: () => void;
   url?: string;
 }) {
   return (
@@ -124,6 +136,7 @@ function ExternalInstruction({
       description={description}
       icon={icon}
       onBack={onBack}
+      onClose={onClose}
       action={
         url ? (
           <Button
@@ -145,12 +158,14 @@ function ExternalInstruction({
 export function InstructionScreen({
   type,
   onBack,
+  onClose,
   url,
   integrationId,
   onCleanup,
 }: {
   type: InstructionType;
   onBack: () => void;
+  onClose: () => void;
   url?: string;
   integrationId?: string;
   onCleanup?: () => void;
@@ -159,7 +174,7 @@ export function InstructionScreen({
   useInstructionCleanup(onCleanup);
 
   if (type === "sign-in") {
-    return <SignInInstruction onBack={onBack} />;
+    return <SignInInstruction onBack={onBack} onClose={onClose} />;
   }
 
   if (type === "billing") {
@@ -169,6 +184,7 @@ export function InstructionScreen({
         description={t`Finish checkout in your browser to unlock more, then return to Anarlog.`}
         actionLabel={t`Reopen checkout page`}
         onBack={onBack}
+        onClose={onClose}
         url={url}
       />
     );
@@ -187,6 +203,7 @@ export function InstructionScreen({
       icon={integration?.icon}
       actionLabel={t`Reopen in browser`}
       onBack={onBack}
+      onClose={onClose}
       url={url}
     />
   );
@@ -224,7 +241,13 @@ function getIntegrationInstruction(integrationId?: string):
   }
 }
 
-function SignInInstruction({ onBack }: { onBack: () => void }) {
+function SignInInstruction({
+  onBack,
+  onClose,
+}: {
+  onBack: () => void;
+  onClose: () => void;
+}) {
   const { t } = useLingui();
   const auth = useAuth();
   const [callbackUrl, setCallbackUrl] = useState("");
@@ -243,6 +266,7 @@ function SignInInstruction({ onBack }: { onBack: () => void }) {
       title={t`Sign in to your account`}
       description={t`Complete sign-in in your browser, then return to Anarlog.`}
       onBack={onBack}
+      onClose={onClose}
     >
       {showCallbackInput ? (
         <>

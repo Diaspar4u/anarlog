@@ -10,6 +10,7 @@ import { cn } from "@anlg/utils";
 import { AnarlogLogo } from "@/components/anarlog-logo";
 import { useAnalytics } from "@/hooks/use-posthog";
 import { useMountEffect } from "@/hooks/useMountEffect";
+import { toAnalyticsToken } from "@/lib/analytics-sanitization";
 import {
   type DownloadPlatform,
   detectDownloadPlatform,
@@ -346,12 +347,9 @@ function DownloadButton() {
   const preferredSection = orderedSections[0];
   const preferredDownload = preferredSection.downloads[0];
   const preferredLabel =
-    preferredSection.platform === "ios" ||
-    preferredSection.platform === "android"
-      ? `Join ${preferredSection.name} beta`
-      : preferredSection.platform === "macos"
-        ? `Download for ${preferredDownload.name}`
-        : `Download for ${preferredSection.name}`;
+    preferredSection.platform === "macos"
+      ? `Download for ${preferredDownload.name}`
+      : `Download for ${preferredSection.name}`;
 
   useMountEffect(() => {
     setPreferredPlatform(
@@ -387,12 +385,16 @@ function DownloadButton() {
     >
       <a
         href={preferredDownload.url}
-        onClick={() =>
-          track("download_clicked", {
-            platform: preferredSection.platform,
-            spec: preferredDownload.name,
-            source: "homepage",
-          })
+        onClick={(event) =>
+          track(
+            "download_clicked",
+            {
+              platform: preferredSection.platform,
+              spec: toAnalyticsToken(preferredDownload.name),
+              source: "homepage",
+            },
+            event,
+          )
         }
         className="inline-flex items-center gap-1.5 rounded-l-full bg-[#181613] py-3 pr-2 pl-4 text-[13px] text-white sm:pl-5 sm:text-sm"
       >
@@ -421,17 +423,38 @@ function DownloadButton() {
                 return null;
               }
 
+              if (!section.available) {
+                return (
+                  <div
+                    key={download.url}
+                    role="menuitem"
+                    aria-disabled="true"
+                    className="text-color-muted flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 opacity-60"
+                  >
+                    {getPlatformIcon(section.platform, 20)}
+                    <span>{section.name}</span>
+                    <span className="border-color-subtle ml-auto rounded-full border px-2 py-0.5 text-[11px] leading-none font-medium tracking-wide uppercase">
+                      {section.status}
+                    </span>
+                  </div>
+                );
+              }
+
               return (
                 <a
                   key={download.url}
                   href={download.url}
                   role="menuitem"
-                  onClick={() => {
-                    track("download_clicked", {
-                      platform: section.platform,
-                      spec: download.name,
-                      source: "homepage_menu",
-                    });
+                  onClick={(event) => {
+                    track(
+                      "download_clicked",
+                      {
+                        platform: section.platform,
+                        spec: toAnalyticsToken(download.name),
+                        source: "homepage_menu",
+                      },
+                      event,
+                    );
                     setOpen(false);
                   }}
                   className="text-color hover:surface-subtle flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
@@ -440,11 +463,6 @@ function DownloadButton() {
                   <span>
                     {getDownloadOptionLabel(section.platform, download.name)}
                   </span>
-                  {section.status && (
-                    <span className="border-color-subtle text-color-muted ml-auto rounded-full border px-2 py-0.5 text-[11px] leading-none font-medium tracking-wide uppercase">
-                      {section.status}
-                    </span>
-                  )}
                 </a>
               );
             }),

@@ -11,6 +11,7 @@ import { SettingsTodo } from "./todo";
 import { LLM } from "~/settings/ai/llm";
 import { STT } from "~/settings/ai/stt";
 import { SettingsAppearance } from "~/settings/appearance";
+import { SettingsCrm } from "~/settings/crm";
 import { SettingsDevelopers } from "~/settings/developers";
 import { SettingsDictation } from "~/settings/dictation";
 import { SettingsDictionary } from "~/settings/dictionary";
@@ -60,6 +61,8 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
         return <SettingsNotifications />;
       case "imports":
         return <SettingsImports />;
+      case "crm":
+        return <SettingsCrm />;
       case "permissions":
         return <SettingsPermissions />;
       case "developers":

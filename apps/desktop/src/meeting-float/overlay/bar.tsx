@@ -8,7 +8,6 @@ import {
   ArrowsInSimple,
   ArrowsOutSimple,
   CaretDown,
-  CircleNotch,
   Square,
   WarningCircle,
 } from "@anlg/ui/components/icons";
@@ -105,6 +104,7 @@ export function FloatingBarOverlay({
                 dictation={state.dictation}
                 bubbles={state.transcriptBubbles ?? []}
                 colorScheme={state.colorScheme}
+                notice={state.transcriptNotice ?? null}
               />
             </div>
           )}
@@ -201,11 +201,14 @@ function StopControl({
       aria-label={
         state.dictation
           ? "Finish dictation"
-          : state.status === "reconnecting"
-            ? "Reconnecting live transcription; stop listening"
-            : state.status === "error"
-              ? "Transcription unavailable; stop listening"
-              : "Stop listening"
+          : state.status === "error"
+            ? `${state.transcriptNotice ?? "Recording needs attention"}; stop listening`
+            : "Stop listening"
+      }
+      title={
+        state.status === "error"
+          ? `${state.transcriptNotice ?? "Recording needs attention"}. Open Anarlog to retry or change devices.`
+          : undefined
       }
       disabled={state.dictation?.phase === "transcribing"}
       onClick={onStop}
@@ -229,8 +232,6 @@ function StopControl({
           <Square size={9} />
           {state.dictation ? "Done" : "Stop"}
         </span>
-      ) : state.status === "reconnecting" ? (
-        <CircleNotch size={20} className="animate-spin" aria-hidden="true" />
       ) : state.status === "error" ? (
         <WarningCircle size={20} aria-hidden="true" />
       ) : (
@@ -251,10 +252,12 @@ function TranscriptList({
   bubbles,
   colorScheme,
   dictation,
+  notice,
 }: {
   dictation: FloatingBarState["dictation"];
   bubbles: FloatingTranscriptBubble[];
   colorScheme: FloatingBarState["colorScheme"];
+  notice: string | null;
 }) {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const [pinned, setPinned] = useState(true);
@@ -263,7 +266,7 @@ function TranscriptList({
     if (pinned) {
       bottomRef.current?.scrollIntoView?.({ block: "end" });
     }
-  }, [bubbles, pinned, dictation?.text, dictation?.partial]);
+  }, [bubbles, pinned, notice, dictation?.text, dictation?.partial]);
 
   return (
     <div className="relative h-full p-3">
@@ -301,6 +304,20 @@ function TranscriptList({
               />
             ))
           )}
+          {!dictation && notice ? (
+            <p
+              role="status"
+              className="px-3 py-1.5 text-center text-[12px] leading-4"
+              style={{
+                color:
+                  colorScheme === "dark"
+                    ? "rgba(255, 255, 255, 0.5)"
+                    : "rgba(0, 0, 0, 0.45)",
+              }}
+            >
+              {notice}
+            </p>
+          ) : null}
           <div ref={bottomRef} />
         </div>
       </div>
@@ -422,6 +439,6 @@ function barColors(state: FloatingBarState): BarColors {
     handle: dark ? "rgba(255, 255, 255, 0.48)" : "rgba(31, 28, 26, 0.36)",
     outerStroke: dark ? "rgba(255, 255, 255, 0.14)" : "rgba(31, 28, 26, 0.12)",
     controlFill: dark ? "rgba(255, 255, 255, 0.08)" : "rgba(31, 28, 26, 0.07)",
-    accent: state.status === "error" ? "rgb(255, 64, 61)" : "rgb(255, 51, 77)",
+    accent: "rgb(255, 51, 77)",
   };
 }

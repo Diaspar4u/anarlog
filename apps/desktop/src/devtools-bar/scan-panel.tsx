@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { useMountEffect } from "@anlg/ui/hooks/use-mount-effect";
 import { cn } from "@anlg/utils";
 
 import { useDevtoolsMetrics } from "./metrics";
@@ -15,7 +16,6 @@ import {
   clearScanHistory,
   getScanPrompt,
   mountScanInspector,
-  setScanAlerts,
   useScanData,
 } from "./scan-data";
 import { RESIZE_HANDLES, useScanPanelLayout } from "./scan-panel-layout";
@@ -137,21 +137,11 @@ export function ScanPanel({
               </p>
             ) : null}
           </div>
-          <div className="border-border/40 flex shrink-0 items-center justify-between gap-1 border-t px-3 py-2">
-            {state.settings.showFPS ? <PanelFps /> : null}
-            <button
-              type="button"
-              aria-pressed={data.alertsEnabled}
-              className={cn([
-                buttonClass,
-                data.alertsEnabled &&
-                  "bg-background/65 text-foreground ring-border/30 shadow-sm ring-1",
-              ])}
-              onClick={() => setScanAlerts(!data.alertsEnabled)}
-            >
-              Alerts {data.alertsEnabled ? "on" : "off"}
-            </button>
-          </div>
+          {state.settings.showFPS ? (
+            <div className="border-border/40 flex shrink-0 items-center border-t px-3 py-2">
+              <PanelFps />
+            </div>
+          ) : null}
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
           <div
@@ -493,9 +483,8 @@ function Overview({ event }: Readonly<{ event: ScanEvent }>) {
 
 function Inspector() {
   const host = useRef<HTMLDivElement>(null);
-  useEffect(
-    () => (host.current ? mountScanInspector(host.current) : undefined),
-    [],
+  useMountEffect(() =>
+    host.current ? mountScanInspector(host.current) : undefined,
   );
   return (
     <div className="flex min-h-0 flex-1 flex-col">

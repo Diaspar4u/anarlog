@@ -40,6 +40,7 @@ const settingsState = vi.hoisted(() => ({
 vi.mock("./auth-context", () => ({
   useAuth: () => ({
     session: authState.session,
+    isFingerprintSettled: true,
     getHeaders: () =>
       authState.session
         ? {
@@ -78,6 +79,15 @@ vi.mock("@anlg/plugin-windows", () => ({
 vi.mock("@tauri-apps/plugin-os", () => ({
   arch: () => settingsState.currentArch,
   platform: () => settingsState.currentPlatform,
+}));
+
+vi.mock("~/settings/team/mirror", () => ({
+  useMyWorkspacesWithMirror: () => ({
+    data: [],
+    isSuccess: true,
+    isLoading: false,
+    fetchStatus: "idle",
+  }),
 }));
 
 vi.mock("~/shared/config", () => ({

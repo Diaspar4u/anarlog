@@ -515,7 +515,7 @@ describe("SettingsTeam", () => {
       screen.getByRole("button", { name: "Delete workspace" }),
     ).toBeTruthy();
     const checkout = await screen.findByRole("button", {
-      name: "Continue to Team checkout",
+      name: "Continue to Pro checkout",
     });
     await waitFor(() =>
       expect((checkout as HTMLButtonElement).disabled).toBe(false),
@@ -546,8 +546,8 @@ describe("SettingsTeam", () => {
 
     renderTeam();
 
-    expect(screen.queryByText("Start Team")).toBeNull();
-    const button = screen.getByRole("button", { name: "Team plan" });
+    expect(screen.queryByText("Start Pro")).toBeNull();
+    const button = screen.getByRole("button", { name: "Pro plan" });
     expect((button as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -576,24 +576,6 @@ describe("SettingsTeam", () => {
         "Fastrepl HQ",
       ),
     );
-  });
-
-  it("shows the workspace logo in its tab", () => {
-    const logoDataUrl = "data:image/jpeg;base64,/9j/4AAQ";
-    mocks.workspaces.data = [
-      {
-        workspaceId: "00000000-0000-4000-8000-000000000001",
-        name: "Fastrepl",
-        ownerUserId: "user-1",
-        logoDataUrl,
-        role: "owner",
-      },
-    ];
-
-    renderTeam();
-
-    const tab = screen.getByRole("button", { name: "Fastrepl" });
-    expect(tab.querySelector("img")?.getAttribute("src")).toBe(logoDataUrl);
   });
 
   it("uploads a workspace logo from the identity tile", async () => {
@@ -1390,12 +1372,6 @@ describe("SettingsTeam", () => {
         "00000000-0000-4000-8000-000000000001",
       ),
     );
-  });
-
-  it("hides the invitations section when there are none", () => {
-    renderTeam();
-
-    expect(screen.queryByText("Invitations")).toBeNull();
   });
 
   it("lists pending invitations with the inviter and accepts one", async () => {

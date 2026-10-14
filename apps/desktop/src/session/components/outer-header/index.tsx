@@ -34,6 +34,8 @@ import { useSessionEvent } from "~/session/hooks/useSessionEvent";
 import {
   usesWindowsStyleTitleBar,
   useWindowControlsGutter,
+  WINDOW_CONTROLS_GUTTER_CLASS,
+  WINDOW_CONTROLS_GUTTER_PLUS_32_CLASS,
 } from "~/shared/hooks/useWindowControlsGutter";
 import { getScheme } from "~/shared/utils";
 import type { EditorView, Tab } from "~/store/zustand/tabs/schema";
@@ -85,10 +87,13 @@ export function OuterHeader({
         // 46px content box centers the 28px controls at 23px, matching the
         // sidebar toggle row (pt-[9px] + size-7).
         "h-12 pb-0.5",
-        standaloneWindow && (showWindowControlsGutter ? "pl-[76px]" : "pl-2"),
+        standaloneWindow &&
+          (showWindowControlsGutter ? WINDOW_CONTROLS_GUTTER_CLASS : "pl-2"),
         !standaloneWindow && !showSidebarTimelineHeaderGutter && "pl-2",
         showSidebarTimelineHeaderGutter &&
-          (showWindowControlsGutter ? "pl-[108px]" : "pl-[32px]"),
+          (showWindowControlsGutter
+            ? WINDOW_CONTROLS_GUTTER_PLUS_32_CLASS
+            : "pl-[32px]"),
       ])}
     >
       {viewSwitcher}
@@ -422,6 +427,17 @@ function getMeetingDisplay(type: RemoteMeeting["type"]) {
       return {
         name: "Cal.com",
         icon: <VideoCamera className="size-3.5 shrink-0" />,
+      };
+    case "x-call":
+      return {
+        name: "X",
+        icon: (
+          <img
+            src="/assets/X logo.svg"
+            alt=""
+            className="size-3.5 shrink-0 dark:invert"
+          />
+        ),
       };
     default:
       return {

@@ -24,6 +24,7 @@ import { toast } from "@anlg/ui/components/ui/toast";
 
 import {
   type GeneralState,
+  getCaptureWarning,
   type LiveIntervalId,
   markLiveActive,
   markLiveCaptureStarted,
@@ -45,6 +46,7 @@ import {
   type TranscriptState,
 } from "./transcript";
 
+import { prepareSessionPeaks } from "~/audio-player/waveform";
 import { runMeetingCompletedAutomations } from "~/automations/engine";
 import { syncCloudApiSnapshotBestEffort } from "~/cloud-api/client";
 import { getSessionResourcePath } from "~/session/resource-path";
@@ -238,6 +240,62 @@ const clearLiveEventUnlisteners = (unlisteners?: (() => void)[]) => {
   unlisteners?.forEach((fn) => fn());
 };
 
+const notifyCaptureWarning = <T extends GeneralState>(
+  get: StoreApi<T>["getState"],
+  targetSessionId: string,
+) => {
+  const warning = getCaptureWarning(get().live);
+  if (warning) {
+    toast.warning(warning, {
+      id: `audio-capture-${targetSessionId}`,
+      duration: Infinity,
+      dismissible: false,
+      closeButton: false,
+      description:
+        "Choose a working audio device and retry. Audio missing during this interruption cannot be recovered.",
+      action: {
+        label: "Retry",
+        dismissOnClick: false,
+        onClick: () => {
+          void import("~/settings/queries")
+            .then(async ({ getStoredSettingValues }) => {
+              const settings = await getStoredSettingValues();
+              if (
+                get().live.sessionId !== targetSessionId ||
+                get().live.status !== "active"
+              )
+                return;
+              const result = await listenerCommands.retryAudioCapture(
+                targetSessionId,
+                settings.values.microphone_device || null,
+              );
+              if (result.status === "error")
+                toast.error("Audio retry failed", {
+                  description: result.error,
+                });
+            })
+            .catch((error) =>
+              console.error("[listener] audio retry failed", error),
+            );
+        },
+      },
+      secondaryAction: {
+        dismissOnClick: false,
+        label: "Device settings",
+        onClick: () => {
+          void import("~/store/zustand/tabs").then(({ useTabs }) =>
+            useTabs
+              .getState()
+              .openNew({ type: "settings", state: { tab: "general" } }),
+          );
+        },
+      },
+    });
+  } else {
+    toast.dismiss(`audio-capture-${targetSessionId}`);
+  }
+};
+
 const createSessionEventHandlers = <T extends LiveStore>(
   set: StoreApi<T>["setState"],
   get: StoreApi<T>["getState"],
@@ -251,6 +309,8 @@ const createSessionEventHandlers = <T extends LiveStore>(
       return;
     }
 
+    if (payload.type === "stopped")
+      toast.dismiss(`audio-capture-${targetSessionId}`);
     if (payload.type === "started") {
       startSpeakerContextCapture(targetSessionId);
       const currentLive = get().live;
@@ -319,6 +379,8 @@ const createSessionEventHandlers = <T extends LiveStore>(
           false);
 
     clearLiveEventUnlisteners(unlisteners);
+    toast.dismiss(`audio-saving-delayed-${targetSessionId}`);
+    toast.dismiss(`audio-disk-low-${targetSessionId}`);
 
     setLiveState(set, (live) => {
       delete live.eventUnlistenersBySession[targetSessionId];
@@ -339,16 +401,42 @@ const createSessionEventHandlers = <T extends LiveStore>(
       get().resetTranscript();
     }
 
+    if (payload.audio_path) {
+      void prepareSessionPeaks(targetSessionId);
+    }
+
     const dispatchMeetingCompleted = () => {
       void localApiCommands.dispatchEvent("meeting.completed", targetSessionId);
       void runMeetingCompletedAutomations(targetSessionId);
     };
 
+    const acknowledgeStoppedCapture = () => {
+      void listenerCommands
+        .acknowledgeStoppedCapture(targetSessionId, payload.stopped_at_ms)
+        .then((result) => {
+          if (result.status === "error") {
+            console.error(
+              "[listener] failed to acknowledge stopped capture",
+              result.error,
+            );
+          }
+        })
+        .catch((error) => {
+          console.error(
+            "[listener] failed to acknowledge stopped capture",
+            error,
+          );
+        });
+    };
+
     if (onStopped) {
-      const finishPostStopProcessing = () => {
+      const finishPostStopProcessing = (acknowledge: boolean) => {
         setLiveState(set, (live) => {
           delete live.postStopProcessingBySession[targetSessionId];
         });
+        if (acknowledge) {
+          acknowledgeStoppedCapture();
+        }
         dispatchMeetingCompleted();
       };
       try {
@@ -363,17 +451,18 @@ const createSessionEventHandlers = <T extends LiveStore>(
           needsBatchRepair,
         });
         void Promise.resolve(stopped).then(
-          finishPostStopProcessing,
+          () => finishPostStopProcessing(true),
           (error) => {
-            finishPostStopProcessing();
+            finishPostStopProcessing(false);
             console.error("[listener] post-stop processing failed", error);
           },
         );
       } catch (error) {
-        finishPostStopProcessing();
+        finishPostStopProcessing(false);
         console.error("[listener] post-stop processing failed", error);
       }
     } else {
+      acknowledgeStoppedCapture();
       dispatchMeetingCompleted();
     }
   },
@@ -388,8 +477,46 @@ const createSessionEventHandlers = <T extends LiveStore>(
 
     if (
       payload.type === "audio_error" &&
+      payload.error.startsWith("audio_saving_delayed")
+    ) {
+      toast.warning("Audio saving is delayed", {
+        id: `audio-saving-delayed-${targetSessionId}`,
+        duration: Infinity,
+        description:
+          "Free up disk space. Audio is kept in memory and saved once storage is available. Live transcription continues.",
+      });
+      return;
+    }
+
+    if (
+      payload.type === "audio_error" &&
+      payload.error === "audio_saving_resumed"
+    ) {
+      toast.dismiss(`audio-saving-delayed-${targetSessionId}`);
+      return;
+    }
+
+    if (payload.type === "audio_error" && payload.error === "audio_disk_low") {
+      toast.warning("Disk almost full", {
+        id: `audio-disk-low-${targetSessionId}`,
+        duration: Infinity,
+        description:
+          "Free up disk space. Audio saving stops if the disk fills up. Live transcription continues.",
+      });
+      return;
+    }
+
+    if (payload.type === "audio_error" && payload.error === "audio_disk_ok") {
+      toast.dismiss(`audio-disk-low-${targetSessionId}`);
+      return;
+    }
+
+    if (
+      payload.type === "audio_error" &&
       payload.error.startsWith("audio_storage_")
     ) {
+      toast.dismiss(`audio-saving-delayed-${targetSessionId}`);
+      toast.dismiss(`audio-disk-low-${targetSessionId}`);
       setLiveState(set, (live) => updateLiveProgress(live, payload));
       toast.error("Audio saving was interrupted", {
         id: `audio-storage-${targetSessionId}`,
@@ -414,8 +541,31 @@ const createSessionEventHandlers = <T extends LiveStore>(
       return;
     }
 
-    if (payload.type === "audio_ready")
-      observeSpeakerMicrophone(targetSessionId, { device: payload.device });
+    if (
+      (payload.type === "audio_error" &&
+        /^audio_(mic|speaker|capture)_(ready|unavailable)/.test(
+          payload.error,
+        )) ||
+      payload.type === "audio_ready"
+    ) {
+      setLiveState(set, (live) => updateLiveProgress(live, payload));
+      notifyCaptureWarning(get, targetSessionId);
+      if (payload.type === "audio_ready")
+        observeSpeakerMicrophone(targetSessionId, {
+          device: payload.device,
+          available:
+            payload.device !== null || get().live.captureHealth.mic === true,
+        });
+      else if (payload.error === "audio_mic_ready")
+        observeSpeakerMicrophone(targetSessionId, { available: true });
+      else if (payload.error.startsWith("audio_mic_unavailable"))
+        observeSpeakerMicrophone(targetSessionId, {
+          device: null,
+          available: false,
+        });
+      return;
+    }
+
     setLiveState(set, (live) => {
       updateLiveProgress(live, payload);
     });
@@ -845,9 +995,19 @@ function applyCaptureSnapshot<T extends LiveStore>(
         intervalId,
         snapshot.requestedLiveTranscription ?? true,
         snapshot.liveTranscriptionActive ?? true,
-        null,
+        snapshot.degraded ?? null,
       );
+      if (snapshot.startedAtMs != null) {
+        live.seconds = elapsedSecondsSince(snapshot.startedAtMs);
+      }
+      if (snapshot.captureHealth != null) {
+        live.captureHealth = snapshot.captureHealth;
+      }
+      if (snapshot.micMuted != null) {
+        live.muted = snapshot.micMuted;
+      }
     });
+    notifyCaptureWarning(get, targetSessionId);
     return;
   }
 
@@ -951,3 +1111,6 @@ export const stopLiveSession = <T extends GeneralState>(
     });
   });
 };
+
+const elapsedSecondsSince = (startedAtMs: number) =>
+  Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000));

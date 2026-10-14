@@ -1,6 +1,6 @@
 ---
 name: new-changelog
-description: Create stable desktop changelogs under packages/changelog/content, grounded in changes since the previous stable release and gated on actual publication.
+description: Prepare Desktop or Mobile release notes, grounded in changes since the preceding release and gated on verified availability.
 metadata:
   internal: true
 ---
@@ -8,7 +8,7 @@ metadata:
 ## Channel contract
 
 Nightly publication is retired. Prepare stable notes in
-`packages/changelog/content/<version>.md`, covering all desktop user-facing
+`packages/changelog/content/desktop/<version>.md`, covering all desktop user-facing
 changes since the previous stable, including changes once described in Nightly
 notes. Preserve historical Nightly notes; do not generate or announce new Nightly
 releases.
@@ -27,7 +27,10 @@ doxxer --config doxxer.desktop.toml current
 doxxer --config doxxer.desktop.toml next patch
 ```
 
-Create the new markdown file in `packages/changelog/content` for that version.
+Create the new Markdown file in `packages/changelog/content/desktop` for that version.
+Read that directory’s `AGENTS.md`, then run
+`node scripts/sync-desktop-changelogs.mjs` to refresh legacy desktop URLs and
+include the generated copies in the same commit.
 
 When preparing a release, also follow the
 [release surface review](../release-new-version/SKILL.md#release-surface-review).
@@ -37,8 +40,12 @@ in the release task; a changelog alone does not establish release readiness.
 Creating a changelog does not itself dispatch or publish a release.
 Keep the notes prepared and merged before freezing the desktop candidate, but
 verify that the public index and direct version URL exclude them until release.
-After desktop publication, deploy the website to expose the released notes; the
-Linux package publication workflow normally performs that deployment.
+For an authorized stable release, [Release Docs](../release-docs/SKILL.md) owns
+website publication immediately after the app is published and verifies the full
+version page and index. It reuses the post-publication Linux APT web deployment
+when suitable or dispatches the missing website deployment within that release.
+The user must not need to ask separately. This authoring skill alone still does
+not authorize a release or deployment.
 
 Each changelog file must start with frontmatter that includes both `date` and
 `summary`:
@@ -56,6 +63,27 @@ at a glance without leaking implementation details.
 
 Follow the writing rules in `packages/changelog/content/AGENTS.md`, including
 [contributor credit](../../../packages/changelog/content/AGENTS.md#contributor-credit).
+
+## Mobile releases
+
+Use `packages/changelog/content/mobile/<version>.md` and read that directory’s
+`AGENTS.md`. Select the explicit requested marketing version or
+`apps/mobile/release-version.json`; never bump or reuse the desktop version.
+Ground beta notes in the preceding available mobile release's source SHA.
+Ground stable notes in the preceding stable mobile release's source SHA so
+changes previously tested in beta remain included. With no prior release,
+review the initial mobile user-facing behavior without inventing publication.
+The changelog workflow accepts `stream`, `channel`, and an optional `version`.
+Use its optional `source_sha` to select an exact candidate or promote an existing
+beta build without including later commits. Without it, stable preparation uses
+HEAD when only a beta record exists for the version; revising notes for an
+already published release in the same channel uses its recorded source.
+
+Prepare notes before freezing the candidate. Do not create the publication
+record during preparation. After verified store/tester availability,
+[Release Docs](../release-docs/SKILL.md) owns the adjacent `<version>.json`
+record and website publication. Record only available platforms and preserve
+channel/destination labels. A submitted build is not a published release.
 
 ## Contributor credit
 

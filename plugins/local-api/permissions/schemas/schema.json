@@ -343,6 +343,18 @@
           "markdownDescription": "Denies the export_meeting_markdown command without any pre-configured scope."
         },
         {
+          "description": "Enables the export_meeting_markdown_automatically command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-export-meeting-markdown-automatically",
+          "markdownDescription": "Enables the export_meeting_markdown_automatically command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the export_meeting_markdown_automatically command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-export-meeting-markdown-automatically",
+          "markdownDescription": "Denies the export_meeting_markdown_automatically command without any pre-configured scope."
+        },
+        {
           "description": "Enables the get_cloud_snapshot command without any pre-configured scope.",
           "type": "string",
           "const": "allow-get-cloud-snapshot",
@@ -379,6 +391,30 @@
           "markdownDescription": "Denies the list_webhooks command without any pre-configured scope."
         },
         {
+          "description": "Enables the markdown_export_policy command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-markdown-export-policy",
+          "markdownDescription": "Enables the markdown_export_policy command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the markdown_export_policy command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-markdown-export-policy",
+          "markdownDescription": "Denies the markdown_export_policy command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the prepare_drive_markdown command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-prepare-drive-markdown",
+          "markdownDescription": "Enables the prepare_drive_markdown command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the prepare_drive_markdown command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-prepare-drive-markdown",
+          "markdownDescription": "Denies the prepare_drive_markdown command without any pre-configured scope."
+        },
+        {
           "description": "Enables the set_webhook_active command without any pre-configured scope.",
           "type": "string",
           "const": "allow-set-webhook-active",
@@ -403,10 +439,10 @@
           "markdownDescription": "Denies the test_webhook command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-list-webhooks`\n- `allow-create-webhook`\n- `allow-delete-webhook`\n- `allow-set-webhook-active`\n- `allow-test-webhook`\n- `allow-dispatch-event`\n- `allow-export-meeting-markdown`\n- `allow-get-cloud-snapshot`\n- `allow-list-cloud-snapshot-ids`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-list-webhooks`\n- `allow-create-webhook`\n- `allow-delete-webhook`\n- `allow-set-webhook-active`\n- `allow-test-webhook`\n- `allow-dispatch-event`\n- `allow-export-meeting-markdown`\n- `allow-markdown-export-policy`\n- `allow-export-meeting-markdown-automatically`\n- `allow-prepare-drive-markdown`\n- `allow-get-cloud-snapshot`\n- `allow-list-cloud-snapshot-ids`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-list-webhooks`\n- `allow-create-webhook`\n- `allow-delete-webhook`\n- `allow-set-webhook-active`\n- `allow-test-webhook`\n- `allow-dispatch-event`\n- `allow-export-meeting-markdown`\n- `allow-get-cloud-snapshot`\n- `allow-list-cloud-snapshot-ids`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-list-webhooks`\n- `allow-create-webhook`\n- `allow-delete-webhook`\n- `allow-set-webhook-active`\n- `allow-test-webhook`\n- `allow-dispatch-event`\n- `allow-export-meeting-markdown`\n- `allow-markdown-export-policy`\n- `allow-export-meeting-markdown-automatically`\n- `allow-prepare-drive-markdown`\n- `allow-get-cloud-snapshot`\n- `allow-list-cloud-snapshot-ids`"
         }
       ]
     }

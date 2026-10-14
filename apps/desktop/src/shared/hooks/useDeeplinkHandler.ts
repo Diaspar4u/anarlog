@@ -8,9 +8,11 @@ import {
   events as deeplink2Events,
 } from "@anlg/plugin-deeplink2";
 import { dismissInstruction } from "@anlg/plugin-windows";
+import { useMountEffect } from "@anlg/ui/hooks/use-mount-effect";
 
 import { useAuth } from "~/auth";
 import { createAuthCallbackHandler } from "~/auth/deeplink";
+import { completeDrivePicker } from "~/automations/drive-picker";
 import { stopActiveWelcomeDemo } from "~/onboarding/welcome-note";
 import {
   allowReconnectedCalendarConnections,
@@ -25,7 +27,6 @@ import {
 } from "~/shared-notes/deeplink";
 import { subscribeThenDrainDeepLinks } from "~/shared/deeplink";
 import { useLatestRef } from "~/shared/hooks/useLatestRef";
-import { useMountEffect } from "~/shared/hooks/useMountEffect";
 import { useTabs } from "~/store/zustand/tabs";
 
 export function useDeeplinkHandler() {
@@ -69,9 +70,18 @@ export function useDeeplinkHandler() {
     };
     const handleDeepLink = (payload: DeepLink) => {
       if (payload.to === "/auth/callback") {
-        const { access_token, refresh_token } = payload.search;
+        const { access_token, refresh_token, state } = payload.search;
         if (access_token && refresh_token) {
-          authCallbackHandler(access_token, refresh_token);
+          void authCallbackHandler(
+            access_token,
+            refresh_token,
+            state ?? undefined,
+          ).catch((error) => {
+            console.error(
+              "[auth] sign-in failed; retry the callback or start sign-in again",
+              error,
+            );
+          });
         }
       } else if (payload.to === "/billing/refresh") {
         void authRef.current.refreshSession();
@@ -87,6 +97,13 @@ export function useDeeplinkHandler() {
           status,
           return_to,
         } = payload.search;
+        if (
+          integration_id === "google-drive" &&
+          completeDrivePicker(return_to)
+        ) {
+          void dismissInstruction();
+          return;
+        }
         if (status === "success") {
           console.log(`[deeplink] integration updated: ${integration_id}`);
           if (disconnected_connection_id) {

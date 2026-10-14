@@ -36,6 +36,7 @@ const TRANSCRIPTION_MODELS: Record<string, readonly string[]> = {
     "openai/whisper-1",
   ],
   dashscope: [
+    "qwen-audio-3.1-asr-flash-streaming",
     "qwen3-asr-flash-realtime",
     "qwen3-asr-flash-realtime-2026-02-10",
   ],
@@ -62,17 +63,20 @@ const TRANSCRIPTION_MODELS: Record<string, readonly string[]> = {
   ],
   xai: ["xai-stt"],
   smallestai: ["pulse", "pulse-pro"],
-  nari: [
-    "qwen3-asr-fast:free",
-    "qwen3-asr:free",
-    "qwen3-asr-fast",
-    "qwen3-asr",
-  ],
+  nari: ["qwen3-asr-fast", "qwen3-asr"],
   pyannote: ["parakeet-tdt-0.6b-v3", "faster-whisper-large-v3-turbo"],
   cohere: ["cohere-transcribe-03-2026", "cohere-transcribe-arabic-07-2026"],
   wisprflow: ["flow"],
   aquavoice: ["avalon-v1.5"],
   meta: ["muse-voice-transcribe-1.0"],
+  inworld: ["inworld/inworld-stt-1"],
+  gradium: ["default"],
+  modulate: [
+    "velma-2-stt-streaming-multilingual-vfast",
+    "velma-2-stt-streaming-english-v2",
+  ],
+  alebex: ["alebex-asr"],
+  amazon_bedrock: ["amazon.nova-2-sonic-v1:0"],
   custom: [],
 };
 

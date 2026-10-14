@@ -16,6 +16,7 @@ specta-typescript = { workspace = true }
 [dependencies]
 anlg-agent-access = { workspace = true }
 anlg-db-app = { workspace = true }
+anlg-storage = { workspace = true }
 tauri-plugin-db = { workspace = true }
 
 bytes = { workspace = true }

@@ -29,7 +29,7 @@ const routes = [
     src: "^/api/assets/blog/(.*)$",
     status: 301,
     headers: {
-      Location: "/images/blog/$1",
+      Location: "https://static.anarlog.so/blog/$1",
     },
   },
   {
@@ -297,13 +297,6 @@ const routes = [
   },
   {
     src: "^/faq/?$",
-    status: 301,
-    headers: {
-      Location: "/",
-    },
-  },
-  {
-    src: "^/about/?$",
     status: 301,
     headers: {
       Location: "/",
