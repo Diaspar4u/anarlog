@@ -21,7 +21,7 @@ import {
 import { id } from "~/shared/utils";
 import { listenerStore } from "~/store/zustand/listener/instance";
 
-const RETURN_ORIGIN_TAB_TYPES: Tab["type"][] = [
+export const RETURN_ORIGIN_TAB_TYPES: Tab["type"][] = [
   "automations",
   "calendar",
   "contacts",
@@ -455,6 +455,17 @@ const reuseExistingTab = (
     preserveReturnOrigin: boolean;
   },
 ): Tab => {
+  if (existingTab.type === "changelog" && requestedTab.type === "changelog") {
+    return {
+      ...applyReturnOriginForReuse(
+        existingTab,
+        requestedTab,
+        preserveReturnOrigin,
+      ),
+      state: requestedTab.state,
+    };
+  }
+
   if (existingTab.type === "settings" && requestedTab.type === "settings") {
     const nextTab = applyReturnOriginForReuse(
       existingTab,

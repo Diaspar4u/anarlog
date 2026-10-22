@@ -2,6 +2,7 @@ import { resolveResource } from "@tauri-apps/api/path";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { AUTO_STOP_ACCESSIBILITY_TIMEOUT_MS } from "./auto-stop";
 import {
   cancelAutoStopEndedNotification,
   consumeAutoStopEndedNotificationKey,
@@ -386,6 +387,109 @@ describe("ListenerProvider detect events", () => {
 
     expect(listMicUsingApplicationsMock).toHaveBeenCalledTimes(1);
     expect(stopSpy).not.toHaveBeenCalled();
+  });
+
+  describe("when a side app releases the mic during a call", () => {
+    const teams = { id: "com.microsoft.teams2", name: "Microsoft Teams" };
+    const recorder = { id: "com.example.recorder", name: "Recorder" };
+    const chrome = { id: "com.google.Chrome", name: "Google Chrome" };
+
+    async function renderActiveWithTriggers(triggerAppIds: string[]) {
+      const store = createListenerStore();
+      const stopSpy = vi.fn();
+      store.setState({ stop: stopSpy });
+      store.getState().setTriggerAppIds(triggerAppIds);
+      setStoreActive(store);
+      const handler = await renderProvider(store);
+      vi.useFakeTimers();
+      return { store, stopSpy, handler };
+    }
+
+    test("keeps listening, then stops when the meeting app ends", async () => {
+      const { store, stopSpy, handler } = await renderActiveWithTriggers([
+        recorder.id,
+      ]);
+
+      listMicUsingApplicationsMock.mockResolvedValue({
+        status: "ok",
+        data: [teams],
+      });
+      handler({ payload: { type: "micStopped", apps: [recorder] } });
+      await vi.advanceTimersByTimeAsync(AUTO_STOP_CONFIRM_DELAY_MS);
+
+      expect(stopSpy).not.toHaveBeenCalled();
+      expect(store.getState().live.triggerAppIds).toContain(teams.id);
+
+      listMicUsingApplicationsMock.mockResolvedValue({
+        status: "ok",
+        data: [],
+      });
+      handler({ payload: { type: "micStopped", apps: [teams] } });
+      await vi.advanceTimersByTimeAsync(AUTO_STOP_CONFIRM_DELAY_MS);
+
+      expect(stopSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test("stops when the meeting app stops in the same event, even with a browser on the mic", async () => {
+      const { stopSpy, handler } = await renderActiveWithTriggers([
+        recorder.id,
+      ]);
+
+      listMicUsingApplicationsMock.mockResolvedValue({
+        status: "ok",
+        data: [chrome],
+      });
+      handler({ payload: { type: "micStopped", apps: [recorder, teams] } });
+      await vi.advanceTimersByTimeAsync(AUTO_STOP_CONFIRM_DELAY_MS);
+
+      expect(stopSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test("withdraws an open stop prompt when the call is still on the mic", async () => {
+      const { stopSpy, handler } = await renderActiveWithTriggers([
+        chrome.id,
+        recorder.id,
+      ]);
+
+      listMicUsingApplicationsMock.mockResolvedValue({
+        status: "ok",
+        data: [],
+      });
+      handler({ payload: { type: "micStopped", apps: [chrome, recorder] } });
+      await vi.advanceTimersByTimeAsync(AUTO_STOP_CONFIRM_DELAY_MS);
+      const promptKey = showNotificationMock.mock.calls[0][0].key;
+
+      listMicUsingApplicationsMock.mockResolvedValue({
+        status: "ok",
+        data: [teams],
+      });
+      handler({ payload: { type: "micStopped", apps: [recorder] } });
+      await vi.advanceTimersByTimeAsync(AUTO_STOP_CONFIRM_DELAY_MS);
+
+      expect(consumeAutoStopEndedNotificationKey(promptKey)).toBeNull();
+      expect(stopSpy).not.toHaveBeenCalled();
+    });
+
+    test("ignores a mic snapshot that returns after the recording changed", async () => {
+      const { store, stopSpy, handler } = await renderActiveWithTriggers([
+        recorder.id,
+      ]);
+      let resolveSnapshot: (value: unknown) => void = () => {};
+      listMicUsingApplicationsMock.mockReturnValue(
+        new Promise((resolve) => {
+          resolveSnapshot = resolve;
+        }),
+      );
+
+      handler({ payload: { type: "micStopped", apps: [recorder] } });
+      await vi.advanceTimersByTimeAsync(AUTO_STOP_CONFIRM_DELAY_MS);
+      setStoreActive(store, "session-2");
+      resolveSnapshot({ status: "ok", data: [teams] });
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(store.getState().live.triggerAppIds).not.toContain(teams.id);
+      expect(stopSpy).not.toHaveBeenCalled();
+    });
   });
 
   test("holds a network-interrupted meeting until its event end grace expires", async () => {
@@ -1468,6 +1572,49 @@ describe("ListenerProvider detect events", () => {
         key: expect.stringContaining("auto-stop-ended:session-1"),
       }),
     );
+  });
+
+  test("keeps recording and prompts when AX stalls without queuing duplicate inspections", async () => {
+    const store = createListenerStore();
+    const stopSpy = vi.fn();
+    const app = { id: "us.zoom.xos", name: "Zoom" };
+    let resolveInspection!: (result: { status: "ok"; data: [] }) => void;
+    inspectMeetingAccessibilityMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveInspection = resolve;
+      }),
+    );
+    store.setState({ stop: stopSpy });
+    store.getState().setTriggerAppIds([app.id]);
+    setStoreActive(store);
+    const handler = await renderProvider(store);
+    vi.useFakeTimers();
+
+    const micStopped = () =>
+      handler({ payload: { type: "micStopped", apps: [app] } });
+    micStopped();
+    await vi.advanceTimersByTimeAsync(AUTO_STOP_CONFIRM_DELAY_MS);
+    expect(showNotificationMock).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(AUTO_STOP_ACCESSIBILITY_TIMEOUT_MS);
+
+    expect(stopSpy).not.toHaveBeenCalled();
+    expect(showNotificationMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: expect.stringContaining("auto-stop-ended:session-1"),
+        action_label: "Stop",
+      }),
+    );
+    micStopped();
+    await vi.advanceTimersByTimeAsync(AUTO_STOP_CONFIRM_DELAY_MS);
+    expect(inspectMeetingAccessibilityMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(AUTO_STOP_ACCESSIBILITY_TIMEOUT_MS);
+    resolveInspection({ status: "ok", data: [] });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(stopSpy).not.toHaveBeenCalled();
+
+    micStopped();
+    await vi.advanceTimersByTimeAsync(AUTO_STOP_CONFIRM_DELAY_MS);
+    expect(stopSpy).toHaveBeenCalledOnce();
   });
 
   test("does not recheck after the meeting resumes during accessibility inspection", async () => {

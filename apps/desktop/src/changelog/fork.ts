@@ -9,6 +9,7 @@ import changelog1424Ads1 from "../../../../packages/changelog/fork-content/1.4.2
 import changelog1425Ads1 from "../../../../packages/changelog/fork-content/1.4.25-ads.1.md?raw";
 import changelog1430Ads1 from "../../../../packages/changelog/fork-content/1.4.30-ads.1.md?raw";
 import changelog1430Ads2 from "../../../../packages/changelog/fork-content/1.4.30-ads.2.md?raw";
+import changelog1431Ads1 from "../../../../packages/changelog/fork-content/1.4.31-ads.1.md?raw";
 
 const FORK_CHANGELOGS: Readonly<Record<string, string>> = {
   "1.4.13-ads.1": changelog1413Ads1,
@@ -22,6 +23,7 @@ const FORK_CHANGELOGS: Readonly<Record<string, string>> = {
   "1.4.25-ads.1": changelog1425Ads1,
   "1.4.30-ads.1": changelog1430Ads1,
   "1.4.30-ads.2": changelog1430Ads2,
+  "1.4.31-ads.1": changelog1431Ads1,
 };
 
 export function getForkChangelog(version: string): string | null {

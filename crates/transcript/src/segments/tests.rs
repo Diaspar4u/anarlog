@@ -593,7 +593,7 @@ fn indexless_words_stay_unnamed_with_multiple_channel_humans() {
 }
 
 #[test]
-fn channel_defaults_do_not_identify_speakers_on_incomplete_channels() {
+fn explicit_channel_names_apply_before_channels_are_complete() {
     for channel in [ChannelProfile::RemoteParty, ChannelProfile::MixedCapture] {
         let finals = vec![
             fw_si("0", 0, 100, channel as i32, 0),
@@ -602,14 +602,9 @@ fn channel_defaults_do_not_identify_speakers_on_incomplete_channels() {
         let assignments = vec![channel_human("alice", channel)];
         let result = build_segments(&finals, &[], &assignments, None);
 
-        assert_eq!(result.len(), 2);
-        assert!(
-            result
-                .iter()
-                .all(|segment| segment.key.speaker_human_id.is_none())
-        );
-        assert_eq!(texts(&result[0]), vec!["0"]);
-        assert_eq!(texts(&result[1]), vec!["1"]);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].key.speaker_human_id.as_deref(), Some("alice"));
+        assert_eq!(texts(&result[0]), vec!["0", "1"]);
     }
 }
 

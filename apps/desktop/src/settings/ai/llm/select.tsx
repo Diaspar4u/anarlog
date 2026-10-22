@@ -84,7 +84,10 @@ export function SelectProviderAndModel() {
   const { t } = useLingui();
   const { providers: configuredProviders, isReady: providerSettingsReady } =
     useConfiguredMapping();
-  const settingsReady = useSettingsReady();
+  const intelligenceDisabled = useConfigValues([
+    "intelligence_disabled",
+  ] as const).intelligence_disabled;
+  const settingsReady = useSettingsReady() && !intelligenceDisabled;
   const billing = useBillingAccess();
   const queryClient = useQueryClient();
   const { setAccordionValue } = useLlmSettings();
@@ -561,9 +564,9 @@ export function getLlmProviderStatus({
       models: ANARLOG_PRO_LLM_MODELS.map(({ id }) => id),
       ignored: [],
       metadata: Object.fromEntries(
-        ANARLOG_PRO_LLM_MODELS.map(({ id }) => [
+        ANARLOG_PRO_LLM_MODELS.map(({ id, inputModalities }) => [
           id,
-          { input_modalities: ["text", "image"] as InputModality[] },
+          { input_modalities: [...inputModalities] },
         ]),
       ),
     };

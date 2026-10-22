@@ -93,6 +93,34 @@ impl DataSource {
 
 pub async fn run(source: &DataSource, command: MeetingCommand, json: bool) -> Result<()> {
     match command {
+        MeetingCommand::Import { .. } | MeetingCommand::ImportStatus { .. } => {
+            unreachable!("handled before opening read-only source")
+        }
+        MeetingCommand::PilotUsage { from_ms, until_ms } => match source {
+            DataSource::Local(db) if json => super::meeting_pilot::run(db, from_ms, until_ms).await,
+            _ => Err(local_only("JSON meetings pilot-usage")),
+        },
+        MeetingCommand::HoldList {
+            after,
+            limit,
+            database_only,
+        } => match source {
+            DataSource::Local(db) if json => {
+                super::meeting_hold::list(db, &after, limit, database_only).await
+            }
+            _ => Err(local_only("JSON meetings hold-list")),
+        },
+        MeetingCommand::HoldExport { id, database_only } => match source {
+            DataSource::Local(db) if json => {
+                super::meeting_hold::export(db, &id, database_only).await
+            }
+            _ => Err(local_only("JSON meetings hold-export")),
+        },
+        MeetingCommand::Delete { .. }
+        | MeetingCommand::Capabilities
+        | MeetingCommand::InitializeManaged => {
+            unreachable!("handled before opening a data source")
+        }
         MeetingCommand::List {
             query,
             series_id,
@@ -142,7 +170,14 @@ pub async fn run(source: &DataSource, command: MeetingCommand, json: bool) -> Re
                 .get_meeting(GetMeetingInput { meeting_id: id })
                 .await?;
             let rendered = if json {
-                output::json("meetings.get", &meeting, None)?
+                match &source {
+                    DataSource::Local(db) => output::json(
+                        "meetings.get",
+                        &anlg_agent_access::local_meeting(db.pool(), meeting).await?,
+                        None,
+                    )?,
+                    DataSource::Cloud(_) => output::json("meetings.get", &meeting, None)?,
+                }
             } else {
                 meeting.to_markdown()
             };
@@ -233,6 +268,17 @@ pub async fn run(source: &DataSource, command: MeetingCommand, json: bool) -> Re
             output: path,
             force,
         } => {
+            if matches!(format, ExportFormat::Json)
+                && let DataSource::Local(db) = source
+            {
+                let meeting = anlg_agent_access::get_local_meeting_export(db.pool(), id).await?;
+                let content = if json {
+                    output::json("meetings.export", &meeting, None)?
+                } else {
+                    output::raw_json(&meeting)?
+                };
+                return output::write_or_emit(&content, path.as_deref(), force);
+            }
             let meeting = source.get_meeting_export(id).await?;
             let content = match (format, json) {
                 (ExportFormat::Markdown, false) => meeting.to_markdown(),
