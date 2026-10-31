@@ -11,6 +11,9 @@ debug = false
 # macOS 27 rejects LLVM-stripped proc-macro dylibs (rust-lang/rust#157750).
 strip = "none"
 
+[patch.crates-io]
+swift-rs = { git = "https://github.com/Brendonovich/swift-rs", rev = "207e4bfe5d36fdd0cc08f28d1849ff94ac7e24b8" }
+
 [workspace]
 resolver = "2"
 exclude = ["crates/tiptap/vendor/mdast_util_to_markdown"]
@@ -392,7 +395,7 @@ sha2 = "0.11"
 whatlang = "0.18.0"
 whichlang = "0.1"
 
-swift-rs = { git = "https://github.com/Brendonovich/swift-rs", rev = "41a1605" }
+swift-rs = { git = "https://github.com/Brendonovich/swift-rs", rev = "207e4bfe5d36fdd0cc08f28d1849ff94ac7e24b8" }
 
 wasapi = "0.23.0"
 windows = "0.62.2"
