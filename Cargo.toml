@@ -6,6 +6,7 @@ debug = true
 [profile.dev.package."*"]
 opt-level = 1
 debug = false
+strip = "none"
 
 [profile.release.build-override]
 # macOS 27 rejects LLVM-stripped proc-macro dylibs (rust-lang/rust#157750).
