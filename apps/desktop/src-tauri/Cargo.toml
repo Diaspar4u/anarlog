@@ -1,6 +1,6 @@
 [package]
 name = "desktop"
-version = "1.4.31-ads.1"
+version = "1.4.34-ads.1"
 authors = ["you"]
 edition = "2024"
 description = "Anarlog Desktop App"

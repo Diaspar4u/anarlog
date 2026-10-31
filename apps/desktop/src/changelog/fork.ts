@@ -10,8 +10,10 @@ import changelog1425Ads1 from "../../../../packages/changelog/fork-content/1.4.2
 import changelog1430Ads1 from "../../../../packages/changelog/fork-content/1.4.30-ads.1.md?raw";
 import changelog1430Ads2 from "../../../../packages/changelog/fork-content/1.4.30-ads.2.md?raw";
 import changelog1431Ads1 from "../../../../packages/changelog/fork-content/1.4.31-ads.1.md?raw";
+import changelog1434Ads1 from "../../../../packages/changelog/fork-content/1.4.34-ads.1.md?raw";
 
 const FORK_CHANGELOGS: Readonly<Record<string, string>> = {
+  "1.4.34-ads.1": changelog1434Ads1,
   "1.4.13-ads.1": changelog1413Ads1,
   "1.4.13-ads.2": changelog1413Ads2,
   "1.4.19-ads.1": changelog1419Ads1,

@@ -24,6 +24,16 @@ const EXCLUDED_FEATURES = [
 ];
 
 describe("getForkChangelog", () => {
+  it("describes meeting and speaker preservation in the maintained release", () => {
+    const content = getForkChangelog("1.4.34-ads.1");
+    expect(content).toContain("speaker names");
+    expect(content).toContain("Show Audio in Finder");
+    expect(content).toContain("configured vault");
+    expect(content).toContain("automatic");
+    for (const feature of EXCLUDED_FEATURES) {
+      expect(content).not.toMatch(new RegExp(feature, "i"));
+    }
+  });
   it("describes the recording and speaker-attribution update", () => {
     const content = getForkChangelog("1.4.31-ads.1");
     expect(content).toContain("Bluetooth");

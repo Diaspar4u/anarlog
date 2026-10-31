@@ -7,6 +7,10 @@ debug = true
 opt-level = 1
 debug = false
 
+[profile.release.build-override]
+# macOS 27 rejects LLVM-stripped proc-macro dylibs (rust-lang/rust#157750).
+strip = "none"
+
 [workspace]
 resolver = "2"
 exclude = ["crates/tiptap/vendor/mdast_util_to_markdown"]

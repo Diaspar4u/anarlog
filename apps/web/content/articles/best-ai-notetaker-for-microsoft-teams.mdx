@@ -19,7 +19,7 @@ For most people, the shortlist is:
 - **Microsoft Facilitator and Intelligent Recap** for organizations already governed through Microsoft 365.
 - **Anarlog** for an open-source, bot-free workflow with a local SQLite meeting record.
 - **Granola** for a polished bot-free notepad with a hosted team workspace.
-- **Tactiq** for live transcription in Teams on the web.
+- **Tactiq** for Teams web transcription or a documented Mac desktop option to verify before rollout.
 - **Otter** for auto-join and unattended capture.
 - **Fireflies** for CRM routing and workflow automation.
 
@@ -30,11 +30,11 @@ For most people, the shortlist is:
 | Microsoft Facilitator, Intelligent Recap, and Copilot | Native Teams audio, recording, and transcription | No external bot | Microsoft 365 | Microsoft-governed organizations |
 | Anarlog | Desktop system audio and microphone | No | Local SQLite | Local-first ownership and AI-provider choice |
 | Granola | Desktop audio with calendar detection | No | Granola workspace | Collaborative, bot-free AI notes |
-| Tactiq | Chrome, Edge, or Teams PWA extension | No | Tactiq workspace | Teams web users who want a live transcript |
+| Tactiq | Browser/PWA extension; Mac desktop capture documented, with conflicting beta guidance | No | Tactiq workspace | Teams web users or Mac users who verify desktop support |
 | Otter | Auto-join participant, desktop capture, Chrome, or mobile | Optional | Otter workspace | Unattended capture and searchable meeting memory |
 | Fireflies | Auto-join participant or desktop system audio | Optional | Fireflies workspace and connected tools | Integration-heavy team workflows |
 
-![Five Microsoft Teams note-taking paths route meeting audio into very different records](https://static.anarlog.so/blog/articles/best-ai-notetaker-for-microsoft-teams/teams-workflow-architecture.png)
+![Five Microsoft Teams note-taking paths route meeting audio into very different records](anarlog/blog/articles/best-ai-notetaker-for-microsoft-teams/teams-workflow-architecture.png)
 
 A native Teams feature inherits Microsoft 365 policies. A local desktop recorder can keep the canonical record on your machine. A bot-free cloud app removes the participant but still stores notes in a vendor workspace. A browser extension depends on how you join. A meeting bot can attend without you, but it must pass the lobby.
 
@@ -48,7 +48,7 @@ Yes, but the answer depends on what you mean by notes.
 
 **Copilot** answers questions and generates notes during a meeting. Teams also has an "Only during the meeting" mode that works without creating a persistent recording or transcript. The tradeoff is that Copilot will not remain available in Recap afterward unless someone enables recording or transcription. Purview may still retain prompts and responses under the organization's policy. [Microsoft explains the distinction here](https://support.microsoft.com/en-us/teams/copilot/use-copilot-without-transcribing-or-recording-a-teams-meeting-or-call).
 
-![Microsoft Teams Intelligent Recap and Copilot view with AI summary, transcript, and speaker timeline](https://static.anarlog.so/blog/library/products/microsoft-teams/recap/2026-07-17-recap.png)
+![Microsoft Teams Intelligent Recap and Copilot view with AI summary, transcript, and speaker timeline](anarlog/blog/library/products/microsoft-teams/recap/2026-07-17-recap.png)
 
 *Microsoft's Recap example keeps the recording, transcript, AI summary, and timeline in one Teams surface. [View the current Microsoft guide](https://support.microsoft.com/en-us/teams/meetings/recap-in-microsoft-teams).*
 
@@ -98,7 +98,7 @@ Choose Microsoft when your company already treats Teams as the meeting system of
 
 You can use managed AI, bring your own provider key, or run local models through Ollama or LM Studio. The model choice is separate from the meeting record. Switching providers does not require moving your history to another workspace.
 
-![Anarlog Settings → Intelligence with the list of configurable AI providers](https://static.anarlog.so/blog/library/products/anarlog/desktop/2026-09-23-settings-intelligence-providers.png)
+![Anarlog Settings → Intelligence with the list of configurable AI providers](anarlog/blog/library/products/anarlog/desktop/2026-09-23-settings-intelligence-providers.png)
 
 *Anarlog lets you pick the AI provider in Settings → Intelligence, separate from the meeting record.*
 
@@ -125,7 +125,7 @@ Anarlog is the strongest fit when ownership means controlling the record itself,
 
 **Best for:** Teams users who want a polished, collaborative AI notepad without a meeting bot.
 
-![Granola notepad beside a video call with background transcription active](https://static.anarlog.so/blog/library/products/granola/notepad/2026-07-19-meeting-note.jpg)
+![Granola notepad beside a video call with background transcription active](anarlog/blog/library/products/granola/notepad/2026-07-19-meeting-note.jpg)
 
 *Granola's first-party product image shows its notepad working beside a call without another participant joining. Source: [Granola](https://www.granola.ai/).*
 
@@ -153,11 +153,13 @@ Choose Granola when you want bot-free capture and shared cloud memory, but do no
 
 ## 4. Tactiq
 
-**Best for:** People who join Teams through a browser and want a live transcript without a guest participant.
+**Best for:** Teams web users who want a live transcript, or Mac users who confirm the desktop option in their account.
 
-[Tactiq](https://tactiq.io/ai-tools/ai-meeting-assistant-for-microsoft-teams) uses a Chrome or Edge extension to display a live transcript beside the meeting. It supports Teams in the browser and the Teams Progressive Web App. The native Teams desktop application is not supported. [Tactiq's setup guide states the current client requirements](https://help.tactiq.io/en/articles/9560779-how-to-use-tactiq-with-microsoft-teams).
+[Tactiq](https://tactiq.io/ai-tools/ai-meeting-assistant-for-microsoft-teams) uses a Chrome or Edge extension to display a live transcript beside the meeting. The extension supports Teams in the browser and the Teams Progressive Web App; it does not capture the native desktop app. [Tactiq's browser setup guide states those client requirements](https://help.tactiq.io/en/articles/9560779-how-to-use-tactiq-with-microsoft-teams).
 
-![Tactiq Live Transcript panel beside a meeting in Microsoft Teams on the web](https://static.anarlog.so/blog/library/products/tactiq/microsoft-teams/tactiq-2026-07-17-live-transcript.png)
+A separate [Mac installation guide](https://help.tactiq.io/en/articles/17447226-how-to-install-the-tactiq-mac-app-for-zoom-slack-and-microsoft-teams) documents bot-free Teams desktop capture through macOS audio permissions, with transcripts uploaded to the Tactiq dashboard after the call. **Sources checked October 27, 2026:** the [public download page](https://tactiq.io/download) still labels the Mac app beta and says Zoom-only. Verify your account and exact Teams client before relying on this option; this comparison is based on published documentation, not a hands-on desktop test. See the [Tactiq switching guide](/blog/tactiq-alternatives/) for the capture and export checks.
+
+![Tactiq Live Transcript panel beside a meeting in Microsoft Teams on the web](anarlog/blog/library/products/tactiq/microsoft-teams/tactiq-2026-07-17-live-transcript.png)
 
 *Tactiq's extension places the live transcript beside Teams on the web. [View the current setup guide](https://help.tactiq.io/en/articles/9560779-how-to-use-tactiq-with-microsoft-teams).*
 
@@ -167,17 +169,18 @@ Choose Granola when you want bot-free capture and shared cloud memory, but do no
 - Live transcript during the meeting
 - Low-cost entry point and a limited free plan
 - Chrome, Edge, and Teams PWA support
+- A separately documented Mac desktop capture option
 - Transcript remains available in the Tactiq dashboard
 
 ### Tradeoffs
 
-- No support for the native Teams desktop app
+- Mac desktop support has conflicting public guidance; Windows users need the browser extension
 - Browser and extension changes can affect capture
 - Some light-meeting sessions require Teams captions to be enabled
 - Notes live in a separate cloud service
 - It cannot join or capture a meeting without you
 
-Choose Tactiq when Teams web is already your normal client.
+Choose the extension when Teams web is already your normal client. On Mac, verify the desktop option before switching tools solely for native Teams capture.
 
 ## 5. Otter
 
@@ -187,7 +190,7 @@ Choose Tactiq when Teams web is already your normal client.
 
 Otter is no longer bot-only. Its current desktop apps can capture meeting audio without adding a participant, and it also offers Chrome and mobile capture. That gives an individual a bot-free option while preserving Otter's hosted workspace and AI-agent features.
 
-![Otter Notetaker calendar controls, visible meeting participant, and live transcript workspace](https://static.anarlog.so/blog/library/products/otter/notetaker/2026-07-17-notetaker-overview.png)
+![Otter Notetaker calendar controls, visible meeting participant, and live transcript workspace](anarlog/blog/library/products/otter/notetaker/2026-07-17-notetaker-overview.png)
 
 *Otter's Notetaker can appear as a visible guest while the user follows the live transcript in Otter. [View Otter's Notetaker overview](https://help.otter.ai/hc/en-us/articles/4425393298327-Otter-Notetaker-Overview).*
 
@@ -217,7 +220,7 @@ Choose Otter when attendance automation matters more than keeping the meeting re
 
 The differentiator is what happens after the recap. Fireflies routes notes into a broad integration catalog and can post meeting output into a selected Teams channel. [Its Teams integration guide explains that delivery path](https://guide.fireflies.ai/articles/8966445661-how-to-set-up-fireflies-microsoft-teams-integration).
 
-![Fireflies meeting summary with its current refinement controls](https://static.anarlog.so/blog/library/products/fireflies/meeting-summary/2026-07-17-refine-summary.png)
+![Fireflies meeting summary with its current refinement controls](anarlog/blog/library/products/fireflies/meeting-summary/2026-07-17-refine-summary.png)
 
 *Fireflies can condense, expand, or rewrite a meeting summary before routing it to other systems. [View the current summary guide](https://guide.fireflies.ai/articles/9547055509-Fireflies-AI-Meeting-Summaries%3A-View%2C-Customise%2C-Expand%2C-Regenerate).*
 
@@ -276,7 +279,7 @@ Use Granola when you want a polished desktop notepad and shared hosted memory wi
 
 ### Choose Tactiq for Teams on the web
 
-Use Tactiq when you consistently join through Chrome, Edge, or the Teams PWA and want live transcription beside the call.
+Use Tactiq's extension when you consistently join through Chrome, Edge, or the Teams PWA and want live transcription beside the call. Mac users can also check the separately documented desktop option and its availability caveat above.
 
 ### Choose Otter for unattended capture
 
@@ -314,11 +317,11 @@ Yes, in "Only during the meeting" mode. Copilot can generate notes and tasks wit
 
 ### Can I take AI meeting notes in Teams without a bot?
 
-Yes. Microsoft native features do not add an external bot. Anarlog and Granola capture desktop audio, Tactiq operates in Teams on the web, and Otter and Fireflies offer bot-free desktop modes alongside their meeting participants.
+Yes. Microsoft native features do not add an external bot. Anarlog and Granola capture desktop audio. Tactiq offers a web extension and documents a Mac capture option, while Otter and Fireflies offer bot-free desktop modes alongside their meeting participants.
 
 ### Which options work with the Teams desktop app?
 
-Microsoft's native features, Anarlog, Granola, and desktop capture modes from Otter or Fireflies work with Teams desktop. Tactiq requires Teams in Chrome, Edge, or the Teams PWA.
+Microsoft's native features, Anarlog, Granola, and desktop capture modes from Otter or Fireflies work with Teams desktop. Tactiq's Mac setup guide also documents Teams desktop support, but its download page still says Zoom-only beta. Confirm availability before rollout; Tactiq's browser extension remains a separate capture path.
 
 ### Is a bot-free notetaker automatically private?
 
